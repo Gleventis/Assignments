@@ -10,16 +10,15 @@ model basic
 /* Insert your model definition here */
 
 global {
-	int num_of_guests <- 20;
+	int num_of_guests <- 2;
 	int num_of_inf <- 1;
 	int num_fStores <- 2;
 	int num_dStores <- 2;
 	int num_of_WC <- 1;
+
 	
 	point inf_loc <- {50, 50};
-	
-	int thirst <- 0;
-	int hunger <- 0;
+
 	
 	init {
 		int xFPosition <- 10;
@@ -28,10 +27,14 @@ global {
 		int xDPosition <- 80;
 		int yDPosition <- 10;
 		
-		create guest number: num_of_guests;
-		create inf_center number: num_of_inf{
+		create guest number: num_of_guests {
+			
+		}
+		
+		create info_center number: num_of_inf{
 			location <- {50, 50};
 		}
+		
 		create fStore number: num_fStores{
 			location <- {xFPosition, yFPosition};
 			xFPosition <- 80;
@@ -43,6 +46,7 @@ global {
 			xDPosition <- 10;
 			yDPosition <- 80;
 		}
+		
 		create WC number: num_of_WC{
 			location <- {90, 50};
 		}
@@ -52,34 +56,87 @@ global {
 species guest skills: [moving] {
 	
 	point target_point <- nil;
-	int range <- 0;
 	int thirst <- 0;
 	int hunger <- 0;
+	int range <- 40;
+	int small_range <- 5;
+	bool atInfCenter <- false;
+	bool atFStore <- false;
+	bool atDStore <- false;
 	
-	// Wander when the target point is nil(0)
+		// Wander when the target point is nil(0)
 	reflex be_idle when: target_point = nil{
 		do wander;
+		
 	}
 	
-	// Learn location for the stores from the information center
-	reflex learn_loc when: (hunger < 50 or thirst < 50) {
-		target_point <- inf_loc;
-		do goto target:target_point;
-		ask inf_center at_distance range{
-			if(myself.hunger < 50) {
-				myself.target_point <- flip(0.5) ? self.fLocation1 : self.fLocation2;
+	reflex hungrythirsty {
+		write(name + ":hunger--> " + hunger + ", thirst--> " + thirst);
+	}
+	
+	reflex infocenter{
+		if(target_point = nil) {
+			write(name + " heading to the info center.");
+		}
+	}
+	
+	
+	reflex learnLocs when: ((hunger = 0 or thirst = 0) and atInfCenter = false) {
+		do goto target: inf_loc;
+		ask info_center {
+			if (myself.hunger = 0 and myself.location = inf_loc) {
+				myself.target_point <- flip(0.5) ? self.fLocation2 : self.fLocation1;
+				write("MPHKA");
+				myself.atInfCenter <- true;
+				myself.atFStore <- true;
 			}
-			else if(myself.thirst < 50) {
+			else if(myself.thirst = 0 and myself.location = inf_loc) {
 				myself.target_point <- flip(0.5) ? self.dLocation1 : self.dLocation2;
+				write("MPHKA PALI");
+				myself.atInfCenter <- true;
+				myself.atDStore <- true;
+			}
+		}
+	}                    
+	
+	reflex atStore when: (atFStore = true or atDStore = true) {
+		if (atFStore = true) {
+			do goto target: target_point;
+			if (location = target_point) {		
+			hunger <- 5;
+			atFStore <- false;	
+			}
+		}
+		else if (atDStore = true) {
+			atDStore <- false;
+			thirst <- 5;
+		}
+		write(name + " hunger : " + hunger + " thirst: " + thirst);
+	}
+	
+	reflex askWC when: (hunger = 5 or thirst = 5) {
+		if(hunger = 5 or thirst = 5 ) {
+			write(name + " have to pee");
+			do goto target: inf_loc;
+			ask info_center{
+				if((myself.hunger = 5 or myself.thirst = 5) and myself.location = inf_loc) {
+					myself.target_point <- self.wcLocation;
+				}
 			}
 		}
 	}
 	
-	// Go to the specified target point
-	reflex move_toTarget when: target_point != nil{
+	reflex wc when: (hunger = 5 or thirst = 5) {
 		do goto target: target_point;
+		hunger <- 0;
+		thirst <- 0;
 	}
 	
+		// Go to the specified target point
+	reflex move_toTarget when: target_point != nil{
+		write(name + " PAW STO TARGET MOY: " + target_point);
+		do goto target: target_point.location;
+	}
 	
 	// design
 	aspect base {
@@ -88,7 +145,7 @@ species guest skills: [moving] {
 	
 }
 
-species inf_center {
+species info_center {
 	
 	//  Locations of 1. food stores, 2. drink stores, 3. WC
 	point fLocation1 <- {10, 10};
@@ -132,7 +189,7 @@ experiment main {
 	output {
 		display map type: opengl {
 			species guest aspect: base;
-			species inf_center aspect: base;
+			species info_center aspect: base;
 			species fStore aspect: base;
 			species dStore aspect: base;
 			species WC aspect: base;
