@@ -10,7 +10,7 @@ model basic
 /* Insert your model definition here */
 
 global {
-	int num_of_guests <- 2;
+	int num_of_guests <- 20;
 	int num_of_inf <- 1;
 	int num_fStores <- 2;
 	int num_dStores <- 2;
@@ -61,8 +61,11 @@ species guest skills: [moving] {
 	int range <- 40;
 	int small_range <- 5;
 	bool atInfCenter <- false;
+	bool atInfCenter2 <- false;
+	bool atInfCenter3 <- false;
 	bool atFStore <- false;
 	bool atDStore <- false;
+	bool atWC <- false;
 	
 		// Wander when the target point is nil(0)
 	reflex be_idle when: target_point = nil{
@@ -81,7 +84,7 @@ species guest skills: [moving] {
 	}
 	
 	
-	reflex learnLocs when: ((hunger = 0 or thirst = 0) and atInfCenter = false) {
+	reflex learnLocs when: (target_point = nil and atInfCenter = false) {
 		do goto target: inf_loc;
 		ask info_center {
 			if (myself.hunger = 0 and myself.location = inf_loc) {
@@ -105,6 +108,7 @@ species guest skills: [moving] {
 			if (location = target_point) {		
 			hunger <- 5;
 			atFStore <- false;	
+			target_point <- inf_loc;
 			}
 		}
 		else if (atDStore = true) {
@@ -114,28 +118,45 @@ species guest skills: [moving] {
 		write(name + " hunger : " + hunger + " thirst: " + thirst);
 	}
 	
-	reflex askWC when: (hunger = 5 or thirst = 5) {
+	reflex askWC when: ((hunger = 5 or thirst = 5) and (atInfCenter2 = false)) {
 		if(hunger = 5 or thirst = 5 ) {
 			write(name + " have to pee");
-			do goto target: inf_loc;
-			ask info_center{
-				if((myself.hunger = 5 or myself.thirst = 5) and myself.location = inf_loc) {
-					myself.target_point <- self.wcLocation;
+			target_point <- inf_loc;
+			if (atInfCenter3=false){
+				do goto target: target_point;
+					if (location=target_point){
+						ask info_center{
+						if((myself.hunger = 5 or myself.thirst = 5) and myself.location = myself.target_point) {
+							myself.target_point <- self.wcLocation;
+							myself.atInfCenter2 <- true;
+							myself.atInfCenter3<-true;
+							write("target: " + myself.target_point);
+						}
+						
+					}
 				}
 			}
 		}
 	}
 	
-	reflex wc when: (hunger = 5 or thirst = 5) {
-		do goto target: target_point;
-		hunger <- 0;
-		thirst <- 0;
+	reflex wc when: ((hunger = 5 or thirst = 5) and destination = target_point) {
+		if (location != target_point) {
+			do goto target: target_point;
+			hunger <- 0;
+			thirst <- 0;
+			write(target_point);
+			atInfCenter2 <- false;
+			atInfCenter3 <- false;
+			atInfCenter <- false;
+			target_point <- nil;
+			write(atInfCenter);
+		}
 	}
-	
+	 
 		// Go to the specified target point
 	reflex move_toTarget when: target_point != nil{
 		write(name + " PAW STO TARGET MOY: " + target_point);
-		do goto target: target_point.location;
+		do goto target: target_point;
 	}
 	
 	// design
