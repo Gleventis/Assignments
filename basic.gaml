@@ -61,8 +61,10 @@ species guest skills: [moving] {
 	int range <- 40;
 	int small_range <- 5;
 	bool atInfCenter <- false;
+	bool atInfCenter2 <- false;
 	bool atFStore <- false;
 	bool atDStore <- false;
+	bool atWC <- false;
 	
 		// Wander when the target point is nil(0)
 	reflex be_idle when: target_point = nil{
@@ -117,19 +119,35 @@ species guest skills: [moving] {
 	reflex askWC when: (hunger = 5 or thirst = 5) {
 		if(hunger = 5 or thirst = 5 ) {
 			write(name + " have to pee");
-			do goto target: inf_loc;
-			ask info_center{
-				if((myself.hunger = 5 or myself.thirst = 5) and myself.location = inf_loc) {
-					myself.target_point <- self.wcLocation;
+			target_point <- inf_loc;
+				
+			if (atInfCenter2=false){
+				do goto target: inf_loc;
+					if (location=inf_loc){
+						ask info_center{
+						if((myself.hunger = 5 or myself.thirst = 5) and myself.location = inf_loc) {
+							myself.target_point <- self.wcLocation;
+						
+						}
+						myself.atInfCenter2<-true;
+					}
 				}
 			}
 		}
 	}
 	
-	reflex wc when: (hunger = 5 or thirst = 5) {
-		do goto target: target_point;
-		hunger <- 0;
-		thirst <- 0;
+	reflex wc when: (atInfCenter2=true) {
+			if(hunger = 5 or thirst = 5 ) {
+			write(name + " heading to wc");
+			
+			do goto target: target_point;
+		
+				hunger <- 0;
+				thirst <- 0;
+		
+		
+	}
+	atInfCenter2<-false;
 	}
 	
 		// Go to the specified target point
