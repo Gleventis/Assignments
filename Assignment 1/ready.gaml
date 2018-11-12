@@ -324,6 +324,12 @@ species guard skills:[moving] {
 			species WC aspect: base;
 			species guard aspect: base;
 		}
+		
+		display my_chart {
+			chart "Number of guests wandering" {
+				data "wandering guests" value: length ( guest where(each.wander1));
+			}
+		}
 	}
 	
 	}
