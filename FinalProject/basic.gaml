@@ -17,7 +17,7 @@ global {
 	int num_entertainer <- 1;
 	int num_stores <- 2;
 	int num_wc <- 1;
-	int num_stages <- 3;
+	int num_stages <- 1;
 	int num_rest <- 1;
 	int num_cell <- 1;
 	
@@ -26,7 +26,10 @@ global {
 	point wc_loc <- {10, 50};
 	
 	point info_loc <- {50,50};
+	
 	point cell_loc <- {95,5};
+	
+	point rest_place_loc <- {5,95};
 	
 	init {
 		int xStoreLoc <- 2;
@@ -46,10 +49,6 @@ global {
 			location <- cell_loc;
 		}
 		
-		create stages number:num_stages{
-		
-		}
-		
 		create store number:num_stores {
 			location <- {xStoreLoc, yStoreLoc};
 			xStoreLoc <- 98;
@@ -58,6 +57,10 @@ global {
 		
 		create wc number: num_wc {
 			location <- wc_loc;
+		}
+		
+		create rest_place number: 1 {
+			location <- rest_place_loc;
 		}
 	}
 }
@@ -74,9 +77,11 @@ species guest skills: [moving, fipa] {
 	bool remainBad <- false;
 	bool cop_informed <- false;
 	bool ready_for_wc <- false;
+	bool need_to_rest <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
+	int stamina <- 500;
 	
 	rgb color <- #teal;
 	
@@ -90,6 +95,11 @@ species guest skills: [moving, fipa] {
 			target_point <- info_loc;
 		}
 	}
+	
+	reflex getting_tired when: (stamina > 50 and !need_to_rest){
+		stamina <- stamina - 1;
+	}
+	
 	
 	reflex change_color when:(!wander and !changed_color) {
 		if (!changed_color and !bad) {
@@ -131,7 +141,7 @@ species infoCenter skills: [fipa]{
 		int pointer <- rnd(1,2);
 		ask guest at_distance 2{
 			// Pointing the guests to the stores
-			if ((self.hungry or self.thirsty or self.color = #grey) and self.target_point = info_loc) {
+			if ((self.hungry or self.thirsty) and self.target_point = info_loc) {
 				if pointer = 1{
 					self.target_point <- store_locs[0];
 				}
@@ -139,9 +149,16 @@ species infoCenter skills: [fipa]{
 					self.target_point <- store_locs[1];
 				}
 			}
+			// Pointing the guests to the wc
 			if self.ready_for_wc {
 				self.target_point <- wc_loc;
 			}
+			
+			if self.stamina = 50 {
+				self.target_point <- rest_place_loc;
+				self.need_to_rest <- true;
+			}
+			
 			self.at_info <- true;
 			
 			// Informing the cop
@@ -177,7 +194,7 @@ species cop skills: [moving, fipa] {
 	}
 	
 	reflex catchbadguest when: length(bad_guests) > 0 {
-		do goto target:(bad_guests[0]) speed: 2.0;
+		do goto target:(bad_guests[0]) speed: 1.5;
 	}
 	
 	reflex killbadguest when: length(bad_guests) > 0 and location distance_to(bad_guests[0]) < 0.1 {
@@ -234,29 +251,6 @@ species cell {
 	aspect base {
 		draw square(10) color: #darkgrey;
 	}
-}
-
-species stages {
-	float music <- (rnd(0.0,1));
- 	float soundQuality <- (rnd(0.0,1));
-	float band <- (rnd(0.0,1));
-	float crowded<- (rnd(0.0,1));
-	bool print <- false;
-	list<float> newstageAtt <- ([music,soundQuality,band,crowded ]); 
-	
-	reflex print  when:  !print   {
-		write "name: "+ name + " music: " + music + " sound Quality: " + soundQuality +  " band: " + band +   " crowded: "  +  crowded;
-		print<-true;
-		}
-	
-	reflex stageAttributes {
-		ask guest {}
-	}
-
-
- 	aspect base {
- 		draw square(10) at:{location.x, location.y,0}color: #magenta;
-		}
 }
 
 species cleaner skills: [moving] {
@@ -318,9 +312,33 @@ species wc {
 	
 	
 	aspect base {
-		draw square(6) color: #brown;
+		draw cube(6) color: #brown;
 	}
 }
+
+species rest_place {
+	int counter <- 0;
+	
+	reflex replenish_stamina when:(!empty(guest at_distance 1)) {
+		ask guest at_distance 1 {
+			if myself.counter < 100 and self.need_to_rest {
+				self.stamina <- self.stamina + 50;
+				myself.counter <- myself.counter + 1;
+				if myself.counter = 100 {
+					self.need_to_rest <- false;
+					self.target_point <- nil;
+					self.at_info <- false;
+					myself.counter <- 0;
+				}
+			}
+		}
+	}
+	
+	aspect base {
+		draw square(10) color: #black;
+	}
+}
+
 species entrance {
 
 }
@@ -328,6 +346,7 @@ species entrance {
 experiment main {
 	output {
 		display my_display type: opengl {
+			image file: "grass.jpg";
 			species guest aspect:base;
 			species infoCenter aspect:base;
 			species cop aspect:base;
@@ -335,8 +354,9 @@ experiment main {
 			species cleaner aspect:base;
 			species store aspect:base;
 			species wc aspect:base;
-			species stages aspect:base;
+			species rest_place aspect:base;
 		}
+		
 		
 	}
 }
