@@ -69,6 +69,7 @@ species guest skills: [moving, fipa] {
 	bool at_info <- false;
 	bool remainBad <- false;
 	bool cop_informed <- false;
+	bool ready_for_wc <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
@@ -111,7 +112,7 @@ species guest skills: [moving, fipa] {
 
 	aspect base{
  			draw pyramid(3)at:{location.x, location.y, 0} color: color;
- 			draw sphere(1) at:{location.x, location.y,3}color: #orange;
+ 			draw sphere(1) at:{location.x, location.y,3} color: #orange;
 	}	
 }
 
@@ -133,6 +134,9 @@ species infoCenter skills: [fipa]{
 				else if pointer = 2{
 					self.target_point <- store_locs[1];
 				}
+			}
+			if self.ready_for_wc {
+				self.target_point <- wc_loc;
 			}
 			self.at_info <- true;
 			
@@ -240,7 +244,7 @@ species store {
 	
 	reflex give_food_drink when:(!empty(guest at_distance 1)) {
 		ask guest at_distance 1{
-			if self.color = #red {
+			if self.color = #red and self.hunger < 5{
 				self.hunger <- self.hunger + 1;
 				self.target_point <- nil;
 				self.at_info <- false;
@@ -249,7 +253,7 @@ species store {
 					self.hungry <- false;
 				}
 			}
-			else if self.color = #blue {
+			else if self.color = #blue and self.hunger < 5 {
 				self.thirst <- self.thirst + 1;
 				self.target_point <- nil;
 				self.at_info <- false;
@@ -257,6 +261,10 @@ species store {
 				if(self.thirst = 5) {
 					self.thirsty <- false;
 				}
+			}
+			if(self.hunger = 5 or self.thirst = 5) {
+				ready_for_wc <- true;
+				self.target_point <- nil;
 			}
 		}
 	}
@@ -269,6 +277,18 @@ species store {
 
 
 species wc {
+	
+	reflex reset_hunger_thirst when:(!empty(guest at_distance 1)) {
+		ask guest at_distance 1 {
+			self.hunger <- 0;
+			self.thirst <- 0;
+			self.ready_for_wc <- false;
+			self.target_point <- nil;
+			self.at_info <- false;
+			self.changed_color <- false;
+		}
+	}
+	
 	
 	aspect base {
 		draw square(6) color: #brown;
