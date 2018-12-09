@@ -17,7 +17,7 @@ global {
 	int num_entertainer <- 1;
 	int num_stores <- 2;
 	int num_wc <- 1;
-	int num_stages <- 1;
+	int num_stages <- 3;
 	int num_rest <- 1;
 	int num_cell <- 1;
 	
@@ -44,6 +44,10 @@ global {
 	
 		create cell number: 1 {
 			location <- cell_loc;
+		}
+		
+		create stages number:num_stages{
+		
 		}
 		
 		create store number:num_stores {
@@ -127,7 +131,7 @@ species infoCenter skills: [fipa]{
 		int pointer <- rnd(1,2);
 		ask guest at_distance 2{
 			// Pointing the guests to the stores
-			if ((self.hungry or self.thirsty) and self.target_point = info_loc) {
+			if ((self.hungry or self.thirsty or self.color = #grey) and self.target_point = info_loc) {
 				if pointer = 1{
 					self.target_point <- store_locs[0];
 				}
@@ -173,7 +177,7 @@ species cop skills: [moving, fipa] {
 	}
 	
 	reflex catchbadguest when: length(bad_guests) > 0 {
-		do goto target:(bad_guests[0]) speed: 1.5;
+		do goto target:(bad_guests[0]) speed: 2.0;
 	}
 	
 	reflex killbadguest when: length(bad_guests) > 0 and location distance_to(bad_guests[0]) < 0.1 {
@@ -230,6 +234,29 @@ species cell {
 	aspect base {
 		draw square(10) color: #darkgrey;
 	}
+}
+
+species stages {
+	float music <- (rnd(0.0,1));
+ 	float soundQuality <- (rnd(0.0,1));
+	float band <- (rnd(0.0,1));
+	float crowded<- (rnd(0.0,1));
+	bool print <- false;
+	list<float> newstageAtt <- ([music,soundQuality,band,crowded ]); 
+	
+	reflex print  when:  !print   {
+		write "name: "+ name + " music: " + music + " sound Quality: " + soundQuality +  " band: " + band +   " crowded: "  +  crowded;
+		print<-true;
+		}
+	
+	reflex stageAttributes {
+		ask guest {}
+	}
+
+
+ 	aspect base {
+ 		draw square(10) at:{location.x, location.y,0}color: #magenta;
+		}
 }
 
 species cleaner skills: [moving] {
@@ -308,8 +335,8 @@ experiment main {
 			species cleaner aspect:base;
 			species store aspect:base;
 			species wc aspect:base;
+			species stages aspect:base;
 		}
-		
 		
 	}
 }
