@@ -17,7 +17,7 @@ global {
 	int num_entertainer <- 1;
 	int num_stores <- 2;
 	int num_wc <- 1;
-	int num_stages <- 1;
+	int num_stages <- 3;
 	int num_rest <- 1;
 	int num_cell <- 1;
 	
@@ -25,6 +25,7 @@ global {
 	
 	point info_loc <- {50,50};
 	point cell_loc <- {95,5};
+	point stage_loc <- {rnd(1, 90), rnd(1, 90)};
 	
 	init {
 		int xStoreLoc <- 2;
@@ -49,6 +50,9 @@ global {
 			xStoreLoc <- 98;
 			yStoreLoc <- 98;
 		}
+		create stages number:num_stages{
+			location <- stage_loc;
+		}
 	}
 }
 
@@ -67,7 +71,7 @@ species guest skills: [moving, fipa] {
 	int hunger <- 0;
 	int thirst <- 0;
 	
-	rgb color <- #grey;
+	rgb color <- #teal;
 	
 	reflex wandering when:(wander and target_point = nil) {
 		do wander;
@@ -83,10 +87,10 @@ species guest skills: [moving, fipa] {
 	reflex change_color when:(!wander and !changed_color) {
 		if (!changed_color and !bad) {
 			color <- flip(0.5) ? #red : #blue;
-			if color = #red {
+			if color = #red or #grey {
 				hungry <- true;
 			}
-			else if color = #blue {
+			else if color = #blue or #grey{
 				thirsty <- true;
 			}
 			changed_color <- true;
@@ -94,6 +98,7 @@ species guest skills: [moving, fipa] {
 		else if(!changed_color and bad) {
 			color <- #grey;
 			changed_color <- true;
+		
 		}
 	}
 	
@@ -130,7 +135,7 @@ species infoCenter skills: [fipa]{
 			self.at_info <- true;
 			
 			// Informing the cop
-			if (self.bad and !self.cop_informed) {
+			if (self.bad and !self.cop_informed and self.color=#grey) {
 				add self to: myself.bad_guests;
 				do start_conversation(to :: list(cop), protocol :: 'no-protocol', performative :: 'cfp', contents :: ["Bad guests!", myself.bad_guests]);
 				self.cop_informed <- true;
@@ -172,7 +177,7 @@ species cop skills: [moving, fipa] {
 			do goto target: self.target_point;
 			self.remainBad <-true;
 		}
-		bad_guests <- bad_guests - first(bad_guests);
+		remove first(bad_guests) from: bad_guests;
 	}
 
 	
@@ -192,7 +197,18 @@ species cell {
 				myself.jailTime <- myself.jailTime + 1;
 				if myself.jailTime = 50 {
 					write name + ': i am free';
-					self.color <- #grey;
+					self.color <- flip(0.2) ? #grey: #teal;
+						if self.color = #grey{
+							self.bad <- true;
+							self.cop_informed <- false;
+						}
+						else 
+							if self.color = #teal{
+							self.bad <- false;
+							
+						}
+					self.at_info <- false;
+					self.changed_color <- false;
 					self.target_point <- nil;
 					self.wander <- true;
 					self.remainBad <- false;
@@ -228,6 +244,14 @@ species store {
  		}
 }
 
+species stages {
+	
+	aspect base{
+		
+ 			draw square(10) color: #darkgrey;
+ 		}
+}
+
 species entrance {
 
 }
@@ -241,6 +265,7 @@ experiment main {
 			species cell aspect:base;
 			species cleaner aspect:base;
 			species store aspect:base;
+			species stages aspect:base;
 		}
 		
 		
