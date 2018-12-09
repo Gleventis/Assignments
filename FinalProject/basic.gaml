@@ -17,15 +17,16 @@ global {
 	int num_entertainer <- 1;
 	int num_stores <- 2;
 	int num_wc <- 1;
-	int num_stages <- 3;
+	int num_stages <- 1;
 	int num_rest <- 1;
 	int num_cell <- 1;
 	
 	list<point> store_locs <- [{2,2},{98, 98}];
 	
+	point wc_loc <- {10, 50};
+	
 	point info_loc <- {50,50};
 	point cell_loc <- {95,5};
-	point stage_loc <- {rnd(1, 90), rnd(1, 90)};
 	
 	init {
 		int xStoreLoc <- 2;
@@ -50,8 +51,9 @@ global {
 			xStoreLoc <- 98;
 			yStoreLoc <- 98;
 		}
-		create stages number:num_stages{
-			location <- stage_loc;
+		
+		create wc number: num_wc {
+			location <- wc_loc;
 		}
 	}
 }
@@ -87,7 +89,7 @@ species guest skills: [moving, fipa] {
 	reflex change_color when:(!wander and !changed_color) {
 		if (!changed_color and !bad) {
 			color <- flip(0.5) ? #red : #blue;
-			if color = #red or #grey {
+			if color = #red or #grey{
 				hungry <- true;
 			}
 			else if color = #blue or #grey{
@@ -95,10 +97,10 @@ species guest skills: [moving, fipa] {
 			}
 			changed_color <- true;
 		}
+		
 		else if(!changed_color and bad) {
 			color <- #grey;
 			changed_color <- true;
-		
 		}
 	}
 	
@@ -135,9 +137,9 @@ species infoCenter skills: [fipa]{
 			self.at_info <- true;
 			
 			// Informing the cop
-			if (self.bad and !self.cop_informed and self.color=#grey) {
+			if (self.bad and !self.cop_informed) {
 				add self to: myself.bad_guests;
-				do start_conversation(to :: list(cop), protocol :: 'no-protocol', performative :: 'cfp', contents :: ["Bad guests!", myself.bad_guests]);
+				do start_conversation(to :: list(cop), protocol :: 'no-protocol', performative :: 'cfp', contents :: [self.name + " is a bad guest!", myself.bad_guests]);
 				self.cop_informed <- true;
 			}
 		}
@@ -177,7 +179,7 @@ species cop skills: [moving, fipa] {
 			do goto target: self.target_point;
 			self.remainBad <-true;
 		}
-		remove first(bad_guests) from: bad_guests;
+		bad_guests <- bad_guests - first(bad_guests);
 	}
 
 	
@@ -197,21 +199,19 @@ species cell {
 				myself.jailTime <- myself.jailTime + 1;
 				if myself.jailTime = 50 {
 					write name + ': i am free';
-					self.color <- flip(0.2) ? #grey: #teal;
-						if self.color = #grey{
-							self.bad <- true;
-							self.cop_informed <- false;
-						}
-						else 
-							if self.color = #teal{
-							self.bad <- false;
-							
-						}
-					self.at_info <- false;
-					self.changed_color <- false;
+					self.color <- flip(0.2) ? #grey : #teal;
+					if self.color = #grey {
+						self.bad <- true;
+						self.cop_informed <- false;
+					}
+					else if (self.color = #teal) {
+						self.bad <- false;
+					}
 					self.target_point <- nil;
 					self.wander <- true;
 					self.remainBad <- false;
+					self.at_info <- false;
+					self.changed_color <- false;
 					myself.jailTime <-0;
 					
 				}
@@ -238,20 +238,42 @@ species cleaner skills: [moving] {
 
 species store {
 	
+	reflex give_food_drink when:(!empty(guest at_distance 1)) {
+		ask guest at_distance 1{
+			if self.color = #red {
+				self.hunger <- self.hunger + 1;
+				self.target_point <- nil;
+				self.at_info <- false;
+				self.changed_color <- false;
+				if(self.hunger = 5) {
+					self.hungry <- false;
+				}
+			}
+			else if self.color = #blue {
+				self.thirst <- self.thirst + 1;
+				self.target_point <- nil;
+				self.at_info <- false;
+				self.changed_color <- false;
+				if(self.thirst = 5) {
+					self.thirsty <- false;
+				}
+			}
+		}
+	}
+	
 	aspect base{
  			draw square(20) color: #darkgrey;
  			draw cube(10) color: #pink;
  		}
 }
 
-species stages {
-	
-	aspect base{
-		
- 			draw square(10) color: #darkgrey;
- 		}
-}
 
+species wc {
+	
+	aspect base {
+		draw square(6) color: #brown;
+	}
+}
 species entrance {
 
 }
@@ -265,7 +287,7 @@ experiment main {
 			species cell aspect:base;
 			species cleaner aspect:base;
 			species store aspect:base;
-			species stages aspect:base;
+			species wc aspect:base;
 		}
 		
 		
