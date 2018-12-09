@@ -62,6 +62,7 @@ species guest skills: [moving, fipa] {
 	bool bad <- flip(0.2);
 	bool at_info <- false;
 	bool remainBad <- false;
+	bool cop_informed <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
@@ -112,7 +113,7 @@ species infoCenter skills: [fipa]{
 	list<point> store_locs <- [{2,2} , {98, 98}];
 	list<guest> bad_guests <- [];
 	
-	bool cop_informed <- false;
+	
 	
 	reflex show_locs when: !empty(guest at_distance 1) {
 		int pointer <- rnd(1,2);
@@ -129,10 +130,10 @@ species infoCenter skills: [fipa]{
 			self.at_info <- true;
 			
 			// Informing the cop
-			if (self.bad and !myself.cop_informed) {
+			if (self.bad and !self.cop_informed) {
 				add self to: myself.bad_guests;
 				do start_conversation(to :: list(cop), protocol :: 'no-protocol', performative :: 'cfp', contents :: ["Bad guests!", myself.bad_guests]);
-				myself.cop_informed <- true;
+				self.cop_informed <- true;
 			}
 		}
 	}
