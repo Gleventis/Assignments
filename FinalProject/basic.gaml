@@ -10,7 +10,7 @@ model basic
 /* Insert your model definition here */
 
 global {
-	int num_guests <- 5;
+	int num_guests <- 10;
 	int num_cops <- 1;
 	int num_cleaners <- 1;
 	int num_manager <- 1;
@@ -24,6 +24,7 @@ global {
 	list<point> store_locs <- [{2,2},{98, 98}];
 	
 	point info_loc <- {50,50};
+	point cell_loc <- {95,5};
 	
 	init {
 		int xStoreLoc <- 2;
@@ -38,6 +39,10 @@ global {
 		create cleaner number: num_cleaners;
 		
 		create cop number: num_cops;
+	
+		create cell number: 1 {
+			location <- cell_loc;
+		}
 		
 		create store number:num_stores {
 			location <- {xStoreLoc, yStoreLoc};
@@ -57,9 +62,10 @@ species guest skills: [moving, fipa] {
 	bool bad <- flip(0.2);
 	bool at_info <- false;
 	
-	int counter <- 500;
+	int hunger <- 0;
+	int thirst <- 0;
 	
-	rgb color;
+	rgb color <- #grey;
 	
 	reflex wandering when:(wander and target_point = nil) {
 		do wander;
@@ -75,13 +81,17 @@ species guest skills: [moving, fipa] {
 	reflex change_color when:(!wander and !changed_color) {
 		if (!changed_color and !bad) {
 			color <- flip(0.5) ? #red : #blue;
+			if color = #red {
+				hungry <- true;
+			}
+			else if color = #blue {
+				thirsty <- true;
+			}
 			changed_color <- true;
 		}
-		if color = #red {
-			hungry <- true;
-		}
-		else if color = #blue {
-			thirsty <- true;
+		else if(!changed_color and bad) {
+			color <- #grey;
+			changed_color <- true;
 		}
 	}
 	
@@ -99,23 +109,30 @@ species guest skills: [moving, fipa] {
 
 species infoCenter skills: [fipa]{
 	list<point> store_locs <- [{2,2} , {98, 98}];
+	list<guest> bad_guests <- [];
 	
-	
+	bool cop_informed <- false;
 	
 	reflex show_locs when: !empty(guest at_distance 1) {
 		int pointer <- rnd(1,2);
 		ask guest at_distance 2{
+			// Pointing the guests to the stores
 			if ((self.hungry or self.thirsty) and self.target_point = info_loc) {
 				if pointer = 1{
-					write "IN pointer 1";
 					self.target_point <- store_locs[0];
 				}
 				else if pointer = 2{
-					write "IN pointer 2";
 					self.target_point <- store_locs[1];
 				}
 			}
 			self.at_info <- true;
+			
+			// Informing the cop
+			if (self.bad and !myself.cop_informed) {
+				add self to: myself.bad_guests;
+				do start_conversation(to :: list(cop), protocol :: 'no-protocol', performative :: 'cfp', contents :: ["Bad guests!", myself.bad_guests]);
+				myself.cop_informed <- true;
+			}
 		}
 	}
 	
@@ -127,10 +144,31 @@ species infoCenter skills: [fipa]{
 
 species cop skills: [moving, fipa] {
 	
+	point target_point <- nil;
+	list<guest> bad_guests <- [];
+	
+	reflex wandering when: target_point = nil {
+		do wander;
+	}
+	
+	reflex get_informed when: (!empty(cfps) and target_point = nil) {
+		message messageInc <- cfps at 0;
+		string alert <- messageInc.contents[0];
+		bad_guests <- messageInc.contents[1];
+		target_point <- bad_guests[0].location;
+	}
+
 	
 	aspect base {
  			draw pyramid(3)at:{location.x, location.y, 0} color: #darkred;
  			draw sphere(1) at:{location.x, location.y,3}color: #black;
+	}
+}
+
+species cell {
+	
+	aspect base {
+		draw square(10) color: #darkgrey;
 	}
 }
 
@@ -160,6 +198,7 @@ experiment main {
 			species guest aspect:base;
 			species infoCenter aspect:base;
 			species cop aspect:base;
+			species cell aspect:base;
 			species cleaner aspect:base;
 			species store aspect:base;
 		}
