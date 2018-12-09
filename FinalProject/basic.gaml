@@ -61,6 +61,7 @@ species guest skills: [moving, fipa] {
 	bool thirsty <- false;
 	bool bad <- flip(0.2);
 	bool at_info <- false;
+	bool remainBad <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
@@ -155,7 +156,22 @@ species cop skills: [moving, fipa] {
 		message messageInc <- cfps at 0;
 		string alert <- messageInc.contents[0];
 		bad_guests <- messageInc.contents[1];
-		target_point <- bad_guests[0].location;
+	
+		
+	}
+	
+	reflex catchbadguest when: length(bad_guests) > 0 {
+		do goto target:(bad_guests[0]) speed: 1.5;
+	}
+	
+	reflex killbadguest when: length(bad_guests) > 0 and location distance_to(bad_guests[0]) < 0.1 {
+		ask bad_guests[0] {
+			write name + ': go to jail!';
+			self.target_point <- cell_loc;
+			do goto target: self.target_point;
+			self.remainBad <-true;
+		}
+		bad_guests <- bad_guests - first(bad_guests);
 	}
 
 	
@@ -166,6 +182,29 @@ species cop skills: [moving, fipa] {
 }
 
 species cell {
+	int jailTime <- 0;
+	
+	reflex jail  {
+		ask guest at_distance 0.1 {
+			if self.remainBad =true{
+				self.color <- #black;
+				myself.jailTime <- myself.jailTime + 1;
+				if myself.jailTime = 50 {
+					write name + ': i am free';
+					self.color <- #grey;
+					self.target_point <- nil;
+					self.wander <- true;
+					self.remainBad <- false;
+					myself.jailTime <-0;
+					
+				}
+				
+			}
+			
+		}
+	
+	}
+	
 	
 	aspect base {
 		draw square(10) color: #darkgrey;
