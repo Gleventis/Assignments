@@ -78,10 +78,12 @@ species guest skills: [moving, fipa] {
 	bool cop_informed <- false;
 	bool ready_for_wc <- false;
 	bool need_to_rest <- false;
+	bool dirty <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
 	int stamina <- 500;
+	
 	
 	rgb color <- #teal;
 	
@@ -99,8 +101,7 @@ species guest skills: [moving, fipa] {
 	reflex getting_tired when: (stamina > 50 and !need_to_rest){
 		stamina <- stamina - 1;
 	}
-	
-	
+
 	reflex change_color when:(!wander and !changed_color) {
 		if (!changed_color and !bad) {
 			color <- flip(0.5) ? #red : #blue;
@@ -121,6 +122,12 @@ species guest skills: [moving, fipa] {
 	
 	reflex go_to_target when: (!wander and target_point != nil) {
 		do goto target:target_point;
+	}
+	
+	reflex spawn_garbage when:(thirst = 5 or hunger = 5) and dirty {
+		create garbage number: 1 {
+			location <- self.location;
+		}
 	}
 	
 
@@ -173,6 +180,13 @@ species infoCenter skills: [fipa]{
 	aspect base {
 		draw cube(6) at:info_loc color:#darkgreen;
 		draw pyramid(6) at:info_loc+{0,0,6} color:#darkgrey;
+	}
+}
+
+species garbage {
+	
+	aspect base {
+		draw square(1) color:#black;
 	}
 }
 
@@ -249,11 +263,23 @@ species cell {
 	
 	
 	aspect base {
-		draw square(10) color: #darkgrey;
+		draw square(10) color: #black;
 	}
 }
 
 species cleaner skills: [moving] {
+	
+	point target_point <- nil;
+	int range <- 5;
+	
+	reflex wandering when: target_point = nil{
+		do wander speed: 3;
+		if !empty(garbage at_distance 4) {
+			ask garbage at_distance 4 {
+				do die;
+			}
+		}
+	}
 	
 	aspect base{
  			draw pyramid(3)at:{location.x, location.y, 0} color: #brown;
@@ -270,6 +296,7 @@ species store {
 				self.target_point <- nil;
 				self.at_info <- false;
 				self.changed_color <- false;
+				self.dirty <- flip(0.1);
 				if(self.hunger = 5) {
 					self.hungry <- false;
 				}
@@ -279,6 +306,7 @@ species store {
 				self.target_point <- nil;
 				self.at_info <- false;
 				self.changed_color <- false;
+				self.dirty <- flip(0.1);
 				if(self.thirst = 5) {
 					self.thirsty <- false;
 				}
@@ -352,6 +380,7 @@ experiment main {
 			species cop aspect:base;
 			species cell aspect:base;
 			species cleaner aspect:base;
+			species garbage aspect:base;
 			species store aspect:base;
 			species wc aspect:base;
 			species rest_place aspect:base;
