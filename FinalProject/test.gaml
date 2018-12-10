@@ -39,6 +39,8 @@ global {
 		
 		create stageManager number: 1;
 		
+		create entertainer number: num_entertainer;
+		
 		create stages number:num_stages{
 		
 		}
@@ -90,7 +92,7 @@ species guest skills: [moving, fipa] {
 	
 	int hunger <- 0;
 	int thirst <- 0;
-	int stamina <- 500;
+	int stamina <- 5000;
 	int w_counter <- 0;
 	int pos<-0;
 	
@@ -117,7 +119,7 @@ species guest skills: [moving, fipa] {
 		}
 	}
 	
-	reflex change_wandering when: w_counter = 29{
+	reflex change_wandering when: w_counter = 30{
 		wander <- false;
 		if !wander and !at_info {
 			target_point <- info_loc;
@@ -168,8 +170,7 @@ species guest skills: [moving, fipa] {
 		add utility3 to: myutility;
 		informed<-false;
 		if length(myutility)=3 {
-			max <- max(myutility);
-			write  name + " max value: " + max;
+
 			max <- max(myutility);
 			write  name + " max value: " + max;
 			loop i from: 0 to: length(myutility)-1 {
@@ -180,35 +181,27 @@ species guest skills: [moving, fipa] {
 			}
 		}
 		calculated <- true;
+		wander <- false;
 	}
 	
-	reflex gotostage  when:  (calculated){
+	reflex gotostage  when:(calculated){
 		ask stages{
 			add self to: myself.ActiveStages;
 		}
-		if pos=0{
-			target_point<-ActiveStages[0];
+		loop g over: guest {
+			if pos=0{
+				target_point<-ActiveStages[0];
+			}
+			else if pos=1{
+				target_point<-ActiveStages[1];
+			}	
+			else if pos=2{
+				target_point<-ActiveStages[2];
+			}
 		}
-		else if pos=1{
-			target_point<-ActiveStages[1];
-		}	
-		else if pos=2{
-			target_point<-ActiveStages[2];
-		}
+		calculated <- false;
+		
 
-	 }
-	 
-	 reflex showtime when: !empty(cfps){
-	 	message messageInc <- cfps at 0;
-	 	cfps<-[];
-	 	informs<-[];
-	 	wander<-true;
-	 	target_point<-nil;
-
-	 	remainBad <- false;
-		at_info <- false;
-		changed_color <- false;
-	 	
 	 }
 	
 	reflex spawn_garbage when:(thirst = 5 or hunger = 5) and dirty {
@@ -290,8 +283,6 @@ species cop skills: [moving, fipa] {
 		message messageInc <- cfps at 0;
 		string alert <- messageInc.contents[0];
 		bad_guests <- messageInc.contents[1];
-	
-		
 	}
 	
 	reflex catchbadguest when: length(bad_guests) > 0 {
@@ -355,6 +346,53 @@ species cell {
 	}
 }
 
+
+species stageManager skills: [moving, fipa] {
+	list<float> stageAtt <- ([]); 
+	bool informed <- false;
+	bool wander <-true;
+	bool atInfoCenter <-false;
+	bool has_informed <- false;
+	
+	reflex learnAtt when: !informed{
+		ask stages {
+			 add self.newstageAtt[0] to: myself.stageAtt;
+		  	 add self.newstageAtt[1] to: myself.stageAtt;
+		   	 add self.newstageAtt[2] to: myself.stageAtt;
+		   	 add self.newstageAtt[3] to: myself.stageAtt;
+			 myself.informed <- true;
+		}
+		
+	}
+	
+	reflex wander when:wander{
+		do wander;	
+	}
+	
+	
+	reflex informShow when: !atInfoCenter{
+		if time >=400 {
+			do goto target:info_loc;
+			wander <- false;
+		}
+		if location distance_to(info_loc) < 2 and !has_informed and((time mod 500) = 0){
+			atInfoCenter <-false;
+			write name + " arrived at info center, shows are coming !";
+			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!", stageAtt]);
+			do start_conversation(to :: list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
+			
+			wander <-true;
+		}
+		
+	}
+	
+	aspect base{
+ 			draw pyramid(3)at:{location.x, location.y, 0} color: #grey;
+ 			draw sphere(1) at:{location.x, location.y,3} color: #fuchsia;
+	}
+	
+}
+
 species stages  skills: [fipa] {
 	float music <- (rnd(0.0,1));
  	float soundQuality <- (rnd(0.0,1));
@@ -379,16 +417,48 @@ species stages  skills: [fipa] {
 			color<- #blue;
 		}
 		counter<-counter+1;
-		if counter>=100{
+		if counter>=200{
 			informs <-[];
 			color <- #magenta;
-			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'cfp', contents :: [self.name + " show is over"]);
+			ask guest at_distance 2 {
+				self.w_counter <- 0;
+				self.wander <- true;
+				self.at_info <- false;
+				self.target_point <- nil;
+				myself.counter <- 0;
+			}
 		}
 	}
 	
 	aspect base {
  		draw square(10) at:{location.x, location.y,0}color: color;
 		}
+	
+}
+
+species entertainer skills: [moving, fipa] {
+	bool wander <- true;
+	
+	list<point> stage_loc <- [];
+	
+	reflex wandering when:wander {
+		do wander;
+	}
+	
+	reflex go_to_stages when:(!empty(informs)) {
+		message messageInc <- informs at 0;
+		ask stages {
+			if !(myself.stage_loc contains self.location) {
+				add self.location to:myself.stage_loc;
+				write myself.stage_loc;
+			}
+		}
+	}
+	
+	aspect base {
+		draw pyramid(3) at:{location.x, location.y} color: #green;
+		draw sphere(1) at:{location.x,location.y, 3} color: #red;
+	}
 	
 }
 
@@ -475,51 +545,6 @@ species wc {
 	}
 }
 
-species stageManager skills: [moving, fipa] {
-	list<float> stageAtt <- ([]); 
-	bool informed <- false;
-	bool wander <-true;
-	bool atInfoCenter <-false;
-	
-	reflex learnAtt when: !informed{
-		ask stages {
-			 add self.newstageAtt[0] to: myself.stageAtt;
-		  	 add self.newstageAtt[1] to: myself.stageAtt;
-		   	 add self.newstageAtt[2] to: myself.stageAtt;
-		   	 add self.newstageAtt[3] to: myself.stageAtt;
-			 myself.informed <- true;
-		}
-		
-	}
-	
-	reflex wander when:wander{
-		do wander;	
-	}
-	
-	
-	reflex informShow when: !atInfoCenter{
-		if time >= 300{
-			do goto target:info_loc;
-			wander <- false;
-		}
-		if location distance_to(info_loc) <2{
-			atInfoCenter <-true;
-			write name + " arrived at info center, shows are coming !";
-			ask guest{
-				do start_conversation(to :: list(guest),list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [myself.name + " Show is about to start!", myself.stageAtt]);
-				do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [myself.name + " Show is about to start!", myself.stageAtt]);
-				do start_conversation(to :: list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [myself.name + " Show is about to start!"]);
-			}
-		}
-		
-	}
-	
-	aspect base{
- 			draw pyramid(3)at:{location.x, location.y, 0} color: #grey;
- 			draw sphere(1) at:{location.x, location.y,3} color: #fuchsia;
-	}
-	
-}
 
 species rest_place {
 	int counter <- 0;
@@ -567,6 +592,7 @@ experiment main {
 			species stages aspect:base;
 			species rest_place aspect:base;
 			species stageManager aspect:base;
+			species entertainer aspect: base;
 		}
 		
 		
