@@ -89,6 +89,7 @@ species guest skills: [moving, fipa] {
 	bool dirty <- false;
 	bool informed<-false;
 	bool calculated<-false;
+	bool updated <-false;
 	bool going_to_stage <- false;
 	bool communicate <- true;
 	bool has_music <- false;
@@ -117,7 +118,7 @@ species guest skills: [moving, fipa] {
 	list<string> music_types <- ["rock", "pop", "disco"];
 	
 	string music_taste <- "";
-	
+		
 	rgb color <- #teal;
 	
 	reflex choose_music when: !has_music {
@@ -133,7 +134,7 @@ species guest skills: [moving, fipa] {
 		}
 		write name + "-->" + music_taste;
 		has_music <- true;
-	}		
+	}
 		
 	reflex wandering when:(wander and target_point = nil and w_counter < 30) {
 		if w_counter < 30 {
@@ -179,6 +180,8 @@ species guest skills: [moving, fipa] {
 		message messageInc <- informs at 0;
 		stageAtt <- messageInc.contents[1];
 		informed <- true;
+
+		
 	}
 	
 	reflex calculate_stage_utility when: informed {
@@ -192,6 +195,7 @@ species guest skills: [moving, fipa] {
 		add utility2 to: myutility;
 		add utility3 to: myutility;
 		informed<-false;
+		
 		if length(myutility)=3 {
 
 			max <- max(myutility);
@@ -201,10 +205,11 @@ species guest skills: [moving, fipa] {
 					write name+ " pos " + i;
 					pos <- i;
 				}
-			}
+			}		
 		}
 		calculated <- true;
 		wander <- false;
+		updated<-false;
 	}
 	
 	reflex gotostage  when:(calculated){
@@ -221,9 +226,13 @@ species guest skills: [moving, fipa] {
 			else if pos=2{
 				target_point<-ActiveStages[2];
 			}
+
+			
 		}
 		calculated <- false;
-		going_to_stage <- true;
+		stageAtt<-[];
+				myutility<-[];
+		
 	 }
 	
 	reflex spawn_garbage when:(thirst = 5 or hunger = 5) and dirty {
@@ -232,6 +241,21 @@ species guest skills: [moving, fipa] {
 		}
 	}
 	
+	reflex resetAtt when: !updated{
+
+		ask stages{
+			if time >=1{ 
+				myself.myutility<-[];
+		 		self.newstageAtt<-[];
+
+
+		 		myself.updated<-true;
+		 		
+		 		}
+		 	
+		}	
+		
+	 }
 	// Interaction
 	reflex interact when: !going_to_stage {
 		ask guest at_distance 1 {
@@ -295,7 +319,8 @@ species guest skills: [moving, fipa] {
 				
 				
 		}
-	}
+		
+	}	
 
 	aspect base{
  			draw pyramid(3)at:{location.x, location.y, 0} color: color;
@@ -369,7 +394,6 @@ species cop skills: [moving, fipa] {
 		message messageInc <- cfps at 0;
 		string alert <- messageInc.contents[0];
 		bad_guests <- messageInc.contents[1];
-		conversations <- [];
 	}
 	
 	reflex catchbadguest when: length(bad_guests) > 0 {
@@ -441,8 +465,22 @@ species stageManager skills: [moving, fipa] {
 	bool atInfoCenter <-false;
 	bool has_informed <- false;
 	
-	reflex learnAtt when: !informed{
+	reflex learnAtt when: !informed and ((time mod 500) = 0){
 		ask stages {
+			if self.newstageAtt=[]{
+					self.music <- (rnd(0.0,1));
+					self.soundQuality <- (rnd(0.0,1));
+					self.band <- (rnd(0.0,1));
+					self.crowded <- (rnd(0.0,1));
+					add self.music to: self.newstageAtt;
+					add self.soundQuality to: self.newstageAtt;
+					add self.band to: self.newstageAtt;
+					add self.crowded to: self.newstageAtt;
+					write " Stage: " + self.name + " updated its Attributes: " + self.newstageAtt;
+				
+
+			 
+			 }
 			 add self.newstageAtt[0] to: myself.stageAtt;
 		  	 add self.newstageAtt[1] to: myself.stageAtt;
 		   	 add self.newstageAtt[2] to: myself.stageAtt;
@@ -468,9 +506,11 @@ species stageManager skills: [moving, fipa] {
 			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!", stageAtt]);
 			do start_conversation(to :: list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
 			
-			wander <-true;
+
 		}
-		
+			wander <-true;
+			informed <-false;
+			stageAtt<-[];
 	}
 	
 	aspect base{
@@ -485,24 +525,28 @@ species stages  skills: [fipa] {
  	float soundQuality <- (rnd(0.0,1));
 	float band <- (rnd(0.0,1));
 	float crowded<- (rnd(0.0,1));
-	
 	bool print <- false;
 	bool party <- false;
-	
 	list<float> newstageAtt <- ([music,soundQuality,band,crowded ]); 
 	rgb color <- #magenta;
 	int counter <- 0;
+	bool updated <- false;
+	bool informed <- true;
 	
 	reflex print  when:  !print   {
 		write "name: "+ name + " music: " + music + " sound Quality: " + soundQuality +  " band: " + band +   " crowded: "  +  crowded;
 		print<-true;
 	}
 	
-	reflex change_party when: ((time != 0) and (time mod 500) = 0) {
+
+	
+	reflex change_party when: time !=0 and (time mod 500)=0{
 		party <- true;
+		
 	}
 	
 	reflex showtime when: party {
+		
 		if (flip(0.5)) {
 			color<- #red;		
 		} 
@@ -510,18 +554,20 @@ species stages  skills: [fipa] {
 			color<- #blue;
 		}
 		counter<-counter+1;
-		if counter>200{
-			color <- #magenta;
+		if counter>200 {
 			party <- false;
-			counter <- 0;
+			color <- #magenta;
+			counter <-0;
 			ask guest at_distance 2 {
 				self.w_counter <- 0;
 				self.wander <- true;
 				self.at_info <- false;
 				self.target_point <- nil;
 				self.going_to_stage <- false;
+				
 			}
 		}
+		
 	}
 	
 	aspect base {
