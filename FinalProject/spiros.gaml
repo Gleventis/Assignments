@@ -14,7 +14,7 @@ global {
 	int num_cops <- 1;
 	int num_cleaners <- 2;
 	int num_manager <- 1;
-	int num_entertainer <- 1;
+	int num_entertainer <- 3;
 	int num_stores <- 2;
 	int num_wc <- 1;
 	int num_stages <- 3;
@@ -90,12 +90,17 @@ species guest skills: [moving, fipa] {
 	bool informed<-false;
 	bool calculated<-false;
 	bool updated <-false;
+	bool going_to_stage <- false;
+	bool communicate <- true;
+	bool has_music <- false;
+	bool conflict <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
 	int stamina <- 5000;
 	int w_counter <- 0;
 	int pos<-0;
+	int speech <- rnd(1,10);
 	
 	float music <- (rnd(0.0,1));
  	float soundQuality <- (rnd(0.0,1));
@@ -110,9 +115,27 @@ species guest skills: [moving, fipa] {
 	list<float> stageAtt <- ([]); 
 	list<float> myutility <- ([]);
 	list ActiveStages;
+	list<string> music_types <- ["rock", "pop", "disco"];
 	
+	string music_taste <- "";
+		
 	rgb color <- #teal;
 	
+	reflex choose_music when: !has_music {
+		int random <- rnd(1,3);
+		if random = 1 {
+			music_taste <- music_types[0];
+		}
+		else if random = 2 {
+			music_taste <- music_types[1];
+		}
+		else if random = 3 {
+			music_taste <- music_types[2];
+		}
+		write name + "-->" + music_taste;
+		has_music <- true;
+	}
+		
 	reflex wandering when:(wander and target_point = nil and w_counter < 30) {
 		if w_counter < 30 {
 			do wander;
@@ -233,7 +256,71 @@ species guest skills: [moving, fipa] {
 		}	
 		
 	 }
-	
+	// Interaction
+	reflex interact when: !going_to_stage {
+		ask guest at_distance 1 {
+			if myself.communicate and self.communicate {
+				write myself.name + " is communicating with " + self.name;
+				if myself.music_taste = "rock" and self.music_taste = "rock" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "pop" and self.music_taste = "pop" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "disco" and self.music_taste = "disco" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "rock" and self.music_taste = "disco" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "pop" and self.music_taste = "disco" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "rock" and self.music_taste = "pop" {
+					write myself.name + " conflict with " + self.name;
+					myself.conflict <- true;
+					self.conflict <- true;
+				}
+				
+				if (myself.conflict or self.conflict) {
+					if myself.speech > self.speech {
+						write "I am " + self.name + " and " + myself.name + " has persuaded me to change music.";
+						self.music_taste <- myself.music_taste;
+						write self.name + " -->" + self.music_taste;		
+					}
+					else if myself.speech < self.speech {
+						write "I am " + myself.name + " and " + self.name + " has persuaded me to change music.";
+						myself.music_taste <- self.music_taste;
+						write myself.name + " -->" + myself.music_taste;
+					}
+					else if myself.speech = self.speech {
+						myself.bad <- flip(0.3);
+						if myself.bad {
+							write myself.name + " I am bad!";
+						}
+						self.bad <- flip(0.3);
+						if self.bad {
+							write self.name + " I am bad!";
+						}
+					}
+				}	
+			
+			}
+				
+				
+		}
+		
+	}	
 
 	aspect base{
  			draw pyramid(3)at:{location.x, location.y, 0} color: color;
@@ -418,6 +505,7 @@ species stageManager skills: [moving, fipa] {
 			write name + " arrived at info center, shows are coming !";
 			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!", stageAtt]);
 			do start_conversation(to :: list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
+			do start_conversation(to :: list(entertainer), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
 			
 
 		}
@@ -476,6 +564,7 @@ species stages  skills: [fipa] {
 				self.wander <- true;
 				self.at_info <- false;
 				self.target_point <- nil;
+				self.going_to_stage <- false;
 				
 			}
 		}
@@ -490,21 +579,142 @@ species stages  skills: [fipa] {
 
 species entertainer skills: [moving, fipa] {
 	bool wander <- true;
-	
+	bool ready <-false;
+	int counter <-0;	
+	int counter1 <-0;
+	int counter2 <-0;
 	list<point> stage_loc <- [];
+	point stage_loc0;
+	point stage_loc1;
+	point stage_loc2;
+	
+
 	
 	reflex wandering when:wander {
 		do wander;
+
 	}
 	
 	reflex go_to_stages when:(!empty(informs)) {
+		wander <-false;
 		message messageInc <- informs at 0;
 		ask stages {
 			if !(myself.stage_loc contains self.location) {
 				add self.location to:myself.stage_loc;
 				write myself.stage_loc;
+				
 			}
 		}
+			if name = 'entertainer0'{
+				stage_loc0<-stage_loc[0];
+				do goto target: stage_loc0;
+			}else if name = 'entertainer1'{
+				stage_loc1<-stage_loc[1];
+				do goto target: stage_loc1;
+				
+			}else if name = 'entertainer2'{
+				stage_loc2<-stage_loc[2];
+				do goto target: stage_loc2;
+				
+			}
+		counter <-0;	
+	 	counter1 <-0;
+		counter2 <-0;
+			
+		ready<-true;
+
+			
+	}
+	
+	reflex singalong when:ready {
+	 
+		if name = 'entertainer0' and location distance_to(stage_loc0) < 10 and ready{
+			counter<-counter+1;
+			if counter >= 50 {
+ 				ask guest at_distance 10 {
+				if myself.counter=60 {
+				write myself.name + " Do you wanna sing along? ..................";
+				
+				}
+				if myself.counter=65 {
+					write myself.name + ".......... Singin'.... "; 
+				}
+				if myself.counter=72 {
+					write self.name + "........... We will we will rock you............ "; 
+				}
+				if myself.counter= 80 {
+					write self.name + ".......... We will we will rock you............... "; 
+				}
+				
+				}
+			
+			
+			}
+		
+		}
+		if name = 'entertainer1' and location distance_to(stage_loc1) < 10 and ready{
+				counter1<-counter1+1;
+				if counter1 >=50 {
+				ask guest at_distance 10 {
+				if myself.counter1= 60 {
+				write myself.name + " Do you wanna sing along? ......................";
+				
+				}
+				if myself.counter1=65 {
+					write myself.name + " ..........My lonelinesss........... "; 
+				}
+				if myself.counter1=72 {
+					write self.name + " ..............is killing me........................... "; 
+				}
+				if myself.counter1= 82 {
+					write self.name + " ................ hit me baby one more time................."; 
+				}
+				
+				}
+				
+				}
+			
+		
+			
+			
+		}
+		if name = 'entertainer2' and location distance_to(stage_loc2) < 10 and ready{
+			counter2<-counter2+1;
+			if counter2 >= 50 {
+				ask guest at_distance 10 {
+				if myself.counter2=60 {
+				write myself.name + " Do you wanna sing along? .....................";
+				
+				}
+				if myself.counter2=65 {
+					write myself.name + " ........ Disco Inferno.................."; 
+				}
+				if myself.counter2=72 {
+					write self.name + " .... ohhhh yeahhhh....... "; 
+				}
+				if myself.counter2= 82 {
+					write self.name + "............burn baby burn................"; 
+				}
+				
+				}
+				
+				}
+			
+		
+			
+			
+		}
+				
+	if counter >= 100  {	
+	ready<-false;
+	conversations<-[];
+	stage_loc0<-nil;
+	stage_loc1<-nil;
+	stage_loc2<-nil;
+	wander<-true;
+	
+	}
+	
 	}
 	
 	aspect base {
