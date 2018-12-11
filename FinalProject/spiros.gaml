@@ -186,7 +186,7 @@ species guest skills: [moving, fipa] {
 		}
 		calculated <- true;
 		wander <- false;
-
+		updated<-false;
 	}
 	
 	reflex gotostage  when:(calculated){
@@ -419,10 +419,11 @@ species stageManager skills: [moving, fipa] {
 			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!", stageAtt]);
 			do start_conversation(to :: list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
 			
+
+		}
 			wander <-true;
 			informed <-false;
-		}
-		
+			stageAtt<-[];
 	}
 	
 	aspect base{
