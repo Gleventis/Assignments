@@ -89,12 +89,17 @@ species guest skills: [moving, fipa] {
 	bool dirty <- false;
 	bool informed<-false;
 	bool calculated<-false;
+	bool going_to_stage <- false;
+	bool communicate <- true;
+	bool has_music <- false;
+	bool conflict <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
 	int stamina <- 5000;
 	int w_counter <- 0;
 	int pos<-0;
+	int speech <- rnd(1,10);
 	
 	float music <- (rnd(0.0,1));
  	float soundQuality <- (rnd(0.0,1));
@@ -109,9 +114,27 @@ species guest skills: [moving, fipa] {
 	list<float> stageAtt <- ([]); 
 	list<float> myutility <- ([]);
 	list ActiveStages;
+	list<string> music_types <- ["rock", "pop", "disco"];
+	
+	string music_taste <- "";
 	
 	rgb color <- #teal;
 	
+	reflex choose_music when: !has_music {
+		int random <- rnd(1,3);
+		if random = 1 {
+			music_taste <- music_types[0];
+		}
+		else if random = 2 {
+			music_taste <- music_types[1];
+		}
+		else if random = 3 {
+			music_taste <- music_types[2];
+		}
+		write name + "-->" + music_taste;
+		has_music <- true;
+	}		
+		
 	reflex wandering when:(wander and target_point = nil and w_counter < 30) {
 		if w_counter < 30 {
 			do wander;
@@ -200,8 +223,7 @@ species guest skills: [moving, fipa] {
 			}
 		}
 		calculated <- false;
-		
-
+		going_to_stage <- true;
 	 }
 	
 	reflex spawn_garbage when:(thirst = 5 or hunger = 5) and dirty {
@@ -210,6 +232,70 @@ species guest skills: [moving, fipa] {
 		}
 	}
 	
+	// Interaction
+	reflex interact when: !going_to_stage {
+		ask guest at_distance 1 {
+			if myself.communicate and self.communicate {
+				write myself.name + " is communicating with " + self.name;
+				if myself.music_taste = "rock" and self.music_taste = "rock" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "pop" and self.music_taste = "pop" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "disco" and self.music_taste = "disco" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "rock" and self.music_taste = "disco" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "pop" and self.music_taste = "disco" {
+					write myself.name + " has no conflict with " + self.name;
+					myself.conflict <- false;
+					self.conflict <- false;
+				}
+				else if myself.music_taste = "rock" and self.music_taste = "pop" {
+					write myself.name + " conflict with " + self.name;
+					myself.conflict <- true;
+					self.conflict <- true;
+				}
+				
+				if (myself.conflict or self.conflict) {
+					if myself.speech > self.speech {
+						write "I am " + self.name + " and " + myself.name + " has persuaded me to change music.";
+						self.music_taste <- myself.music_taste;
+						write self.name + " -->" + self.music_taste;		
+					}
+					else if myself.speech < self.speech {
+						write "I am " + myself.name + " and " + self.name + " has persuaded me to change music.";
+						myself.music_taste <- self.music_taste;
+						write myself.name + " -->" + myself.music_taste;
+					}
+					else if myself.speech = self.speech {
+						myself.bad <- flip(0.3);
+						if myself.bad {
+							write myself.name + " I am bad!";
+						}
+						self.bad <- flip(0.3);
+						if self.bad {
+							write self.name + " I am bad!";
+						}
+					}
+				}	
+			
+			}
+				
+				
+		}
+	}
 
 	aspect base{
  			draw pyramid(3)at:{location.x, location.y, 0} color: color;
@@ -283,6 +369,7 @@ species cop skills: [moving, fipa] {
 		message messageInc <- cfps at 0;
 		string alert <- messageInc.contents[0];
 		bad_guests <- messageInc.contents[1];
+		conversations <- [];
 	}
 	
 	reflex catchbadguest when: length(bad_guests) > 0 {
@@ -375,7 +462,7 @@ species stageManager skills: [moving, fipa] {
 			do goto target:info_loc;
 			wander <- false;
 		}
-		if location distance_to(info_loc) < 2 and !has_informed and((time mod 500) = 0){
+		if location distance_to(info_loc) < 2 and !has_informed and ((time mod 500) = 0){
 			atInfoCenter <-false;
 			write name + " arrived at info center, shows are coming !";
 			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!", stageAtt]);
@@ -398,7 +485,10 @@ species stages  skills: [fipa] {
  	float soundQuality <- (rnd(0.0,1));
 	float band <- (rnd(0.0,1));
 	float crowded<- (rnd(0.0,1));
+	
 	bool print <- false;
+	bool party <- false;
+	
 	list<float> newstageAtt <- ([music,soundQuality,band,crowded ]); 
 	rgb color <- #magenta;
 	int counter <- 0;
@@ -408,8 +498,11 @@ species stages  skills: [fipa] {
 		print<-true;
 	}
 	
-	reflex showtime when: !empty(informs) {
-		message messageInc <- informs at 0;
+	reflex change_party when: ((time != 0) and (time mod 500) = 0) {
+		party <- true;
+	}
+	
+	reflex showtime when: party {
 		if (flip(0.5)) {
 			color<- #red;		
 		} 
@@ -417,15 +510,16 @@ species stages  skills: [fipa] {
 			color<- #blue;
 		}
 		counter<-counter+1;
-		if counter>=200{
-			informs <-[];
+		if counter>200{
 			color <- #magenta;
+			party <- false;
+			counter <- 0;
 			ask guest at_distance 2 {
 				self.w_counter <- 0;
 				self.wander <- true;
 				self.at_info <- false;
 				self.target_point <- nil;
-				myself.counter <- 0;
+				self.going_to_stage <- false;
 			}
 		}
 	}
