@@ -20,6 +20,8 @@ global {
 	int num_stages <- 3;
 	int num_rest <- 1;
 	int num_cell <- 1;
+	int num_rd_bar <- 1;
+	int num_pd_bar <- 1;
 	
 	list<point> store_locs <- [{2,2},{98, 98}];
 	
@@ -31,11 +33,23 @@ global {
 	
 	point rest_place_loc <- {5,95};
 	
+	point rd_bar_loc <- {47, 4};
+	
+	point pd_bar_loc <- {47, 96};
+	
 	init {
 		int xStoreLoc <- 2;
 		int yStoreLoc <- 2;
 		
 		create guest number: num_guests;
+		
+		create rd_bar number: num_rd_bar {
+			location <- rd_bar_loc;
+		}
+		
+		create pd_bar number: num_pd_bar {
+			location <- pd_bar_loc;
+		}
 		
 		create stageManager number: 1;
 		
@@ -101,6 +115,7 @@ species guest skills: [moving, fipa] {
 	int w_counter <- 0;
 	int pos<-0;
 	int speech <- rnd(1,10);
+	int happiness <- 0;
 	
 	float music <- (rnd(0.0,1));
  	float soundQuality <- (rnd(0.0,1));
@@ -180,8 +195,6 @@ species guest skills: [moving, fipa] {
 		message messageInc <- informs at 0;
 		stageAtt <- messageInc.contents[1];
 		informed <- true;
-
-		
 	}
 	
 	reflex calculate_stage_utility when: informed {
@@ -258,16 +271,20 @@ species guest skills: [moving, fipa] {
 	 }
 	// Interaction
 	reflex interact when: !going_to_stage {
-		ask guest at_distance 1 {
+		ask guest at_distance 0.5 {
 			if myself.communicate and self.communicate {
 				write myself.name + " is communicating with " + self.name;
 				if myself.music_taste = "rock" and self.music_taste = "rock" {
 					write myself.name + " has no conflict with " + self.name;
+					self.target_point <- rd_bar_loc;
+					myself.target_point <- rd_bar_loc;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
 				else if myself.music_taste = "pop" and self.music_taste = "pop" {
 					write myself.name + " has no conflict with " + self.name;
+					self.target_point <- pd_bar_loc;
+					myself.target_point <- pd_bar_loc;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
@@ -278,11 +295,15 @@ species guest skills: [moving, fipa] {
 				}
 				else if myself.music_taste = "rock" and self.music_taste = "disco" {
 					write myself.name + " has no conflict with " + self.name;
+					self.target_point <- rd_bar_loc;
+					myself.target_point <- rd_bar_loc;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
 				else if myself.music_taste = "pop" and self.music_taste = "disco" {
 					write myself.name + " has no conflict with " + self.name;
+					self.target_point <- pd_bar_loc;
+					myself.target_point <- pd_bar_loc;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
@@ -326,6 +347,39 @@ species guest skills: [moving, fipa] {
  			draw pyramid(3)at:{location.x, location.y, 0} color: color;
  			draw sphere(1) at:{location.x, location.y,3} color: #orange;
 	}	
+}
+
+species rd_bar {
+	
+	reflex increase_happiness {
+		ask guest at_distance 0 {
+			if self.music_taste = "rock" or self.music_taste = "disco" {
+				self.happiness <- self.happiness + 1;
+				write self.name + " is listening to rock/disco and is having fun!";
+				self.communicate <- flip(0.5);
+			}
+		}
+	} 
+	
+	aspect base {
+		draw cube(6) color: #lightgrey;
+	}
+}
+
+species pd_bar {
+	reflex increase_happiness {
+		ask guest at_distance 0 {
+			if self.music_taste = "pop" or self.music_taste = "disco" {
+				self.happiness <- self.happiness + 1;
+				write self.name + " is listening to pop/disco and is having fun!";
+				self.communicate <- flip(0.5);
+			}
+		}
+	}
+	
+	aspect base {
+		draw cube(6) color: #lightgrey;
+	}
 }
 
 
@@ -733,6 +787,8 @@ experiment main {
 			species rest_place aspect:base;
 			species stageManager aspect:base;
 			species entertainer aspect: base;
+			species rd_bar aspect: base;
+			species pd_bar aspect: base;
 		}
 		
 		
