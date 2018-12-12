@@ -505,7 +505,7 @@ species stageManager skills: [moving, fipa] {
 			write name + " arrived at info center, shows are coming !";
 			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!", stageAtt]);
 			do start_conversation(to :: list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
-			do start_conversation(to :: list(entertainer), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
+
 			
 
 		}
@@ -580,58 +580,67 @@ species stages  skills: [fipa] {
 species entertainer skills: [moving, fipa] {
 	bool wander <- true;
 	bool ready <-false;
+	bool count <-true;
 	int counter <-0;	
 	int counter1 <-0;
 	int counter2 <-0;
+	bool informed<-false;
 	list<point> stage_loc <- [];
-	point stage_loc0;
-	point stage_loc1;
-	point stage_loc2;
+	point target_point<-nil;
 	
-
-	
-	reflex wandering when:wander {
-		do wander;
-
-	}
-	
-	reflex go_to_stages when:(!empty(informs)) {
-		wander <-false;
-		message messageInc <- informs at 0;
+	reflex setStages when:!informed and time =3{
 		ask stages {
 			if !(myself.stage_loc contains self.location) {
 				add self.location to:myself.stage_loc;
-				write myself.stage_loc;
-				
 			}
 		}
-			if name = 'entertainer0'{
-				stage_loc0<-stage_loc[0];
-				do goto target: stage_loc0;
-			}else if name = 'entertainer1'{
-				stage_loc1<-stage_loc[1];
-				do goto target: stage_loc1;
-				
-			}else if name = 'entertainer2'{
-				stage_loc2<-stage_loc[2];
-				do goto target: stage_loc2;
-				
-			}
-		counter <-0;	
-	 	counter1 <-0;
-		counter2 <-0;
+					if name = 'entertainer0'{
+						target_point<-stage_loc[0];
 			
-		ready<-true;
-
+					}else if name = 'entertainer1'{
+						target_point<-stage_loc[1];
 			
+				
+					}else if name = 'entertainer2'{
+						target_point<-stage_loc[2];
+				
+				
+					}
+				
+			
+		
+		
+		informed<-true;
 	}
 	
-	reflex singalong when:ready {
-	 
-		if name = 'entertainer0' and location distance_to(stage_loc0) < 10 and ready{
-			counter<-counter+1;
-			if counter >= 50 {
- 				ask guest at_distance 10 {
+	reflex wandering when:  wander {
+		
+		do wander;
+		if informed and ((time mod 500) = 0){
+				
+				
+				wander<-false;
+				ready<-true;
+				count<-true;
+			} 
+
+
+	}
+
+			
+	
+	reflex go_to_stages when: ready {
+		do goto target:target_point;
+		
+		if ready{
+				
+				
+				
+				
+			if  name = 'entertainer0' and location distance_to(target_point) < 10 and count {
+				counter<-counter+1;
+				
+ 				ask guest at_distance 5 {
 				if myself.counter=60 {
 				write myself.name + " Do you wanna sing along? ..................";
 				
@@ -647,15 +656,17 @@ species entertainer skills: [moving, fipa] {
 				}
 				
 				}
-			
+				if counter = 100{
+					count<-false;
+					counter<-0;
+					wander<-true;
+					ready<-false;
+				}
 			
 			}
-		
-		}
-		if name = 'entertainer1' and location distance_to(stage_loc1) < 10 and ready{
+			if   name = 'entertainer1' and location distance_to(target_point) < 10 and  count {
 				counter1<-counter1+1;
-				if counter1 >=50 {
-				ask guest at_distance 10 {
+				ask guest at_distance 5 {
 				if myself.counter1= 60 {
 				write myself.name + " Do you wanna sing along? ......................";
 				
@@ -671,17 +682,17 @@ species entertainer skills: [moving, fipa] {
 				}
 				
 				}
-				
+				if counter1 = 100{
+					count<-false;
+					counter1<-0;
+					wander<-true;
+					ready<-false;
 				}
-			
-		
-			
-			
-		}
-		if name = 'entertainer2' and location distance_to(stage_loc2) < 10 and ready{
-			counter2<-counter2+1;
-			if counter2 >= 50 {
-				ask guest at_distance 10 {
+				
+			}
+			if   name = 'entertainer2' and location distance_to(target_point) < 10 and count {
+				counter2<-counter2+1;
+				ask guest at_distance 5 {
 				if myself.counter2=60 {
 				write myself.name + " Do you wanna sing along? .....................";
 				
@@ -697,25 +708,19 @@ species entertainer skills: [moving, fipa] {
 				}
 				
 				}
-				
+				if counter2 = 100{
+					count<-false;
+					counter2<-0;
+					wander<-true;
+					ready<-false;
 				}
-			
-		
-			
-			
-		}
 				
-	if counter >= 100  {	
-	ready<-false;
-	conversations<-[];
-	stage_loc0<-nil;
-	stage_loc1<-nil;
-	stage_loc2<-nil;
-	wander<-true;
+			}
+		}
 	
 	}
+
 	
-	}
 	
 	aspect base {
 		draw pyramid(3) at:{location.x, location.y} color: #green;
