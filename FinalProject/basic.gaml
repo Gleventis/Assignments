@@ -9,6 +9,11 @@ model basic
 
 /* Insert your model definition here */
 
+
+/*
+ * ***************************** Global Declaration *****************************
+ * Includes values such as the number of the agents, locations of buildings and global values used for the charts.
+ */
 global {
 	int num_guests <- 50;
 	int num_cops <- 1;
@@ -36,6 +41,10 @@ global {
 	point rd_bar_loc <- {47, 4};
 	
 	point pd_bar_loc <- {47, 96};
+	
+	//Values for the chart
+	
+	int happiness <- 0;
 	
 	init {
 		int xStoreLoc <- 2;
@@ -87,6 +96,24 @@ global {
 	}
 }
 
+/*
+ * ***************************** Species Declaration *****************************
+ * 1st. Guest
+ *  2nd. Rd_bar
+ *  3rd. Pd_bar
+ *  4th. InfoCenter
+ *  5th. Garbage
+ *  6th. Cop
+ *  7th. Cell
+ *  8th. StageManager
+ *  9th. Stages
+ *  10th. Entertainer
+ *  11th. Cleaner
+ *  12th. Store
+ *  13th. Wc
+ *  14th. RestPlace
+ */
+
 species guest skills: [moving, fipa] {
 	point target_point <- nil;
 	
@@ -116,7 +143,6 @@ species guest skills: [moving, fipa] {
 	int w_counter <- 0;
 	int pos<-0;
 	int speech <- rnd(1,10);
-	int happiness <- 0;
 	
 	float music <- (rnd(0.0,1));
  	float soundQuality <- (rnd(0.0,1));
@@ -254,6 +280,9 @@ species guest skills: [moving, fipa] {
 		create garbage number: 1 {
 			location <- self.location;
 		}
+		if !empty(garbage at_distance 1) {
+			happiness <- happiness - 1;
+		}
 	}
 	
 	reflex resetAtt when: !updated{
@@ -341,11 +370,15 @@ species guest skills: [moving, fipa] {
 					if myself.speech > self.speech {
 						write "I am " + self.name + " and " + myself.name + " has persuaded me to change music.";
 						self.music_taste <- myself.music_taste;
+						happiness <- happiness - 1;
+						happiness <- happiness + 1;
 						write self.name + " -->" + self.music_taste;		
 					}
 					else if myself.speech < self.speech {
 						write "I am " + myself.name + " and " + self.name + " has persuaded me to change music.";
 						myself.music_taste <- self.music_taste;
+						happiness <- happiness - 1;
+						happiness <- happiness + 1;
 						write myself.name + " -->" + myself.music_taste;
 					}
 					else if myself.speech = self.speech {
@@ -378,7 +411,7 @@ species rd_bar {
 	reflex increase_happiness {
 		ask guest at_distance 0 {
 			if (self.music_taste = "rock" or self.music_taste = "disco") and self.has_communicated{
-				self.happiness <- self.happiness + 1;
+				happiness <- happiness + 1;
 				write self.name + " is listening to rock/disco and is having fun!";
 				self.communicate <- false;
 				self.has_communicated <- false;
@@ -399,7 +432,7 @@ species pd_bar {
 	reflex increase_happiness {
 		ask guest at_distance 0 {
 			if (self.music_taste = "pop" or self.music_taste = "disco") and self.has_communicated {
-				self.happiness <- self.happiness + 1;
+				happiness <- happiness + 1;
 				write self.name + " is listening to pop/disco and is having fun!";
 				self.communicate <- false;
 				self.has_communicated <- false;
@@ -490,10 +523,13 @@ species cop skills: [moving, fipa] {
 	
 	reflex killbadguest when: length(bad_guests) > 0 and location distance_to(bad_guests[0]) < 0.1 {
 		ask bad_guests[0] {
-			write name + ': go to jail!';
-			self.target_point <- cell_loc;
-			do goto target: self.target_point;
-			self.remainBad <-true;
+			if self.color = #grey or self.color = #black {
+				write name + ': go to jail!';
+				self.target_point <- cell_loc;
+				do goto target: self.target_point;
+				self.remainBad <-true;
+			}
+		
 		}
 		bad_guests <- bad_guests - first(bad_guests);
 	}
@@ -513,7 +549,7 @@ species cell {
 			if self.remainBad =true{
 				self.color <- #black;
 				myself.jailTime <- myself.jailTime + 1;
-				if myself.jailTime = 50 {
+				if myself.jailTime = 70 {
 					write name + ': i am free';
 					self.color <- flip(0.2) ? #grey : #teal;
 					if self.color = #grey {
@@ -652,6 +688,7 @@ species stages  skills: [fipa] {
 				self.at_info <- false;
 				self.target_point <- nil;
 				self.going_to_stage <- false;
+				happiness <- happiness + 5;
 				
 			}
 		}
@@ -805,7 +842,16 @@ species entrance {
 
 }
 
+/*
+ *  ***************************** Experiment Declaration *****************************
+ *  Includes commands for changing the number of the guests, cleaners and cops, charts for the value of happiness, ..., and the main display.
+ */
+
 experiment main {
+	parameter "Number of guests" var: num_guests min: 10 max: 50 category: "Guests";
+	parameter "Number of cleaners" var: num_cleaners min: 2 max: 20 category: "Cleaners";
+	parameter "Number of cops" var: num_cops min: 1 max: 6 category: "Cops";
+	
 	output {
 		display my_display type: opengl {
 			image file: "grass.jpg";
@@ -823,6 +869,11 @@ experiment main {
 			species entertainer aspect: base;
 			species rd_bar aspect: base;
 			species pd_bar aspect: base;
+		}
+		display happiness_graph {
+			chart "Happiness" {
+				data "happiness" value: happiness;
+			}
 		}
 		
 		
