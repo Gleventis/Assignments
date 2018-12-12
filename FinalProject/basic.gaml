@@ -497,8 +497,8 @@ species infoCenter skills: [fipa]{
 	}
 	
 	aspect base {
-		draw cube(6) at:info_loc color:#darkgreen;
-		draw pyramid(6) at:info_loc+{0,0,6} color:#darkgrey;
+		//draw cube(6) at:info_loc color:#darkgreen;
+		draw pyramid(6) at:info_loc+{0,0,6} color:#skyblue;
 	}
 }
 
@@ -590,7 +590,7 @@ species cell {
 	
 	
 	aspect base {
-		draw square(10) color: #black;
+		draw square(10) color: #salmon;
 	}
 }
 
@@ -601,6 +601,10 @@ species stageManager skills: [moving, fipa] {
 	bool wander <-true;
 	bool atInfoCenter <-false;
 	bool has_informed <- false;
+	int counter<-0;
+	int counter1<-0;
+	int counter2<-0;
+	
 	
 	reflex learnAtt when: !informed and ((time mod 500) = 0){
 		ask stages {
@@ -623,29 +627,48 @@ species stageManager skills: [moving, fipa] {
 		   	 add self.newstageAtt[2] to: myself.stageAtt;
 		   	 add self.newstageAtt[3] to: myself.stageAtt;
 			 myself.informed <- true;
+			 
 		}
 		
 	}
 	
 	reflex wander when:wander{
+		
+		if counter>=0 and counter<=400{
+		counter<-counter+1;
 		do wander;	
+		
+		}
+		if counter >=400 and counter1 >=0 and counter1<=100{
+			counter1<-counter1+1;
+			do goto target:info_loc;
+			if counter1=100{counter<-0;}
+		}if counter1>=100 and counter2>= 0 and counter2<=200{
+			counter2<-counter2+1;
+			do goto target:info_loc;
+			if counter2=200{
+				counter1<-0;
+				counter2<-0;
+			}	
+		} 
+	
+		
+		
 	}
 	
 	
 	reflex informShow when: !atInfoCenter{
-		if time >=400 {
-			do goto target:info_loc;
-			wander <- false;
-		}
+
 		if location distance_to(info_loc) < 2 and !has_informed and ((time mod 500) = 0){
 			atInfoCenter <-false;
 			write name + " arrived at info center, shows are coming !";
 			do start_conversation(to :: list(guest), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!", stageAtt]);
 			do start_conversation(to :: list(stages), protocol :: 'no-protocol', performative :: 'inform', contents :: [name + " Show is about to start!"]);
+
 			
 
 		}
-			wander <-true;
+
 			informed <-false;
 			stageAtt<-[];
 	}
@@ -665,7 +688,7 @@ species stages  skills: [fipa] {
 	bool print <- false;
 	bool party <- false;
 	list<float> newstageAtt <- ([music,soundQuality,band,crowded ]); 
-	rgb color <- #magenta;
+	rgb color <- #palegreen;
 	int counter <- 0;
 	bool updated <- false;
 	bool informed <- true;
@@ -693,7 +716,7 @@ species stages  skills: [fipa] {
 		counter<-counter+1;
 		if counter>200 {
 			party <- false;
-			color <- #magenta;
+			color <- #palegreen;
 			counter <-0;
 			ask guest at_distance 2 {
 				self.w_counter <- 0;
@@ -979,7 +1002,7 @@ species rest_place {
 	}
 	
 	aspect base {
-		draw square(10) color: #black;
+		draw square(10) color: #grey;
 	}
 }
 
