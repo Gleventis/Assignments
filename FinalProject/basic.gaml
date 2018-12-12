@@ -15,11 +15,11 @@ model basic
  * Includes values such as the number of the agents, locations of buildings and global values used for the charts.
  */
 global {
-	int num_guests <- 50;
+	int num_guests <- 10;
 	int num_cops <- 1;
 	int num_cleaners <- 10;
 	int num_manager <- 1;
-	int num_entertainer <- 1;
+	int num_entertainer <- 3;
 	int num_stores <- 2;
 	int num_wc <- 1;
 	int num_stages <- 3;
@@ -45,6 +45,7 @@ global {
 	//Values for the chart
 	
 	int happiness <- 0;
+	int num_of_garbage <- 0;
 	
 	init {
 		int xStoreLoc <- 2;
@@ -279,6 +280,7 @@ species guest skills: [moving, fipa] {
 	reflex spawn_garbage when:(thirst = 5 or hunger = 5) and dirty {
 		create garbage number: 1 {
 			location <- self.location;
+			num_of_garbage <- num_of_garbage + 1;
 		}
 		if !empty(garbage at_distance 1) {
 			happiness <- happiness - 1;
@@ -702,20 +704,151 @@ species stages  skills: [fipa] {
 }
 
 species entertainer skills: [moving, fipa] {
-	bool wander <- true;
-	
+bool wander <- true;
+	bool ready <-false;
+	bool count <-true;
+	int counter <-0;	
+	int counter1 <-0;
+	int counter2 <-0;
+	bool informed<-false;
 	list<point> stage_loc <- [];
+	point target_point<-nil;
 	
-	reflex wandering when:wander {
-		do wander;
-	}
-	
-	reflex go_to_stages when:(!empty(informs)) {
-		message messageInc <- informs at 0;
+	reflex setStages when:!informed and time =3{
 		ask stages {
 			if !(myself.stage_loc contains self.location) {
 				add self.location to:myself.stage_loc;
-				write myself.stage_loc;
+			}
+		}
+					if name = 'entertainer0'{
+						target_point<-stage_loc[0];
+			
+					}else if name = 'entertainer1'{
+						target_point<-stage_loc[1];
+			
+				
+					}else if name = 'entertainer2'{
+						target_point<-stage_loc[2];
+				
+				
+					}
+				
+			
+		
+		
+		informed<-true;
+	}
+	
+	reflex wandering when:  wander {
+		
+		do wander;
+		if informed and ((time mod 500) = 0){
+				
+				
+				wander<-false;
+				ready<-true;
+				count<-true;
+			} 
+
+
+	}
+
+			
+	
+	reflex go_to_stages when: ready {
+		do goto target:target_point;
+		
+		if ready{
+				
+				
+				
+				
+			if  name = 'entertainer0' and location distance_to(target_point) < 10 and count {
+				counter<-counter+1;
+				
+ 				ask guest at_distance 5 {
+				if myself.counter=60 {
+				write myself.name + " Do you wanna sing along? ..................";
+				
+				}
+				if myself.counter=65 {
+					write myself.name + ".......... Singin'.... "; 
+				}
+				if myself.counter=72 {
+					write self.name + "........... We will we will rock you............ "; 
+				}
+				if myself.counter= 80 {
+					write self.name + ".......... We will we will rock you............... "; 
+				}
+				
+				}
+				ask stages{
+					if self.counter=200{
+					myself.counter<-0;
+					myself.count<-false;
+					myself.wander<-true;
+					myself.ready<-false;
+					}
+				
+				}
+			
+			}
+			if   name = 'entertainer1' and location distance_to(target_point) < 10 and  count {
+				counter1<-counter1+1;
+				ask guest at_distance 5 {
+				if myself.counter1= 60 {
+				write myself.name + " Do you wanna sing along? ......................";
+				}
+				if myself.counter1=65 {
+					write myself.name + " ..........My lonelinesss........... "; 
+				}
+				if myself.counter1=72 {
+					write self.name + " ..............is killing me........................... "; 
+				}
+				if myself.counter1= 82 {
+					write self.name + " ................ hit me baby one more time................."; 
+				}
+				
+				}ask stages{
+					if self.counter=200{
+					myself.counter1<-0;
+					myself.count<-false;
+					myself.wander<-true;
+					myself.ready<-false;
+				}
+				
+				}
+
+				
+			}
+			if   name = 'entertainer2' and location distance_to(target_point) < 10 and count {
+				counter2<-counter2+1;
+				ask guest at_distance 5 {
+				if myself.counter2=60 {
+				write myself.name + " Do you wanna sing along? .....................";
+				
+				}
+				if myself.counter2=65 {
+					write myself.name + " ........ Disco Inferno.................."; 
+				}
+				if myself.counter2=72 {
+					write self.name + " .... ohhhh yeahhhh....... "; 
+				}
+				if myself.counter2= 82 {
+					write self.name + "............burn baby burn................"; 
+				}
+				
+				}
+				ask stages{
+					if self.counter=200{
+					myself.counter2<-0;
+					myself.count<-false;
+					myself.wander<-true;
+					myself.ready<-false;
+				}
+				
+				}
+				
 			}
 		}
 	}
@@ -737,6 +870,7 @@ species cleaner skills: [moving] {
 		if !empty(garbage at_distance 4) {
 			ask garbage at_distance 4 {
 				do die;
+				num_of_garbage <- num_of_garbage - 1;
 			}
 		}
 	}
@@ -838,9 +972,6 @@ species rest_place {
 	}
 }
 
-species entrance {
-
-}
 
 /*
  *  ***************************** Experiment Declaration *****************************
@@ -871,11 +1002,16 @@ experiment main {
 			species pd_bar aspect: base;
 		}
 		display happiness_graph {
-			chart "Happiness" {
+			chart "Happiness" x_label: "Time" y_label: "Happiness"{
 				data "happiness" value: happiness;
 			}
 		}
-		
+		display garbage_happiness_pie {
+			chart "Proportion between Happiness-Garbage" type: pie {
+				data "Happiness" value: happiness;
+				data "Garbage" value: num_of_garbage;
+			}
+		}
 		
 	}
 }
