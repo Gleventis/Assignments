@@ -547,7 +547,10 @@ species cell {
 	int jailTime <- 0;
 	
 	reflex jail  {
+	
 		ask guest at_distance 1 {
+			happiness<-happiness-1;
+
 			if self.remainBad =true{
 				self.color <- #black;
 				self.target_point <- nil;
@@ -569,18 +572,9 @@ species cell {
 					self.changed_color <- false;
 					self.w_counter <- -10;
 					myself.jailTime <-0;
-					}else
-					{self.color <- flip(0.2) ? #grey : #teal;
-					if self.color = #grey {
-						self.bad <- true;
-						self.cop_informed <- false;
 					}
-					else if (self.color = #teal) {
-						self.bad <- false;
-					}
-						
 					
-				}	
+					
 				
 				
 			}
@@ -902,7 +896,7 @@ species store {
 				self.target_point <- nil;
 				self.at_info <- false;
 				self.changed_color <- false;
-				self.dirty <- flip(0.1);
+				self.dirty <- flip(0.2);
 				self.w_counter <- -5;
 				self.wander <- true;
 				if(self.hunger = 5) {
@@ -914,7 +908,7 @@ species store {
 				self.target_point <- nil;
 				self.at_info <- false;
 				self.changed_color <- false;
-				self.dirty <- flip(0.1);
+				self.dirty <- flip(0.2);
 				self.w_counter <- -5;
 				self.wander <- true;
 				if(self.thirst = 5) {
