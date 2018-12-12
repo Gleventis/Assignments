@@ -550,6 +550,7 @@ species cell {
 		ask guest at_distance 1 {
 			if self.remainBad =true{
 				self.color <- #black;
+				self.target_point <- nil;
 				myself.jailTime <- myself.jailTime + 1;
 				if myself.jailTime = 70 {
 					write name + ': i am free';
@@ -568,8 +569,19 @@ species cell {
 					self.changed_color <- false;
 					self.w_counter <- -10;
 					myself.jailTime <-0;
+					}else
+					{self.color <- flip(0.2) ? #grey : #teal;
+					if self.color = #grey {
+						self.bad <- true;
+						self.cop_informed <- false;
+					}
+					else if (self.color = #teal) {
+						self.bad <- false;
+					}
+						
 					
-				}
+				}	
+				
 				
 			}
 			
