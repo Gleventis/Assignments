@@ -656,11 +656,14 @@ species entertainer skills: [moving, fipa] {
 				}
 				
 				}
-				if counter = 100{
-					count<-false;
-					counter<-0;
-					wander<-true;
-					ready<-false;
+				ask stages{
+					if self.counter=200{
+					myself.counter<-0;
+					myself.count<-false;
+					myself.wander<-true;
+					myself.ready<-false;
+				}
+				
 				}
 			
 			}
@@ -681,13 +684,16 @@ species entertainer skills: [moving, fipa] {
 					write self.name + " ................ hit me baby one more time................."; 
 				}
 				
+				}ask stages{
+					if self.counter=200{
+					myself.counter1<-0;
+					myself.count<-false;
+					myself.wander<-true;
+					myself.ready<-false;
 				}
-				if counter1 = 100{
-					count<-false;
-					counter1<-0;
-					wander<-true;
-					ready<-false;
+				
 				}
+
 				
 			}
 			if   name = 'entertainer2' and location distance_to(target_point) < 10 and count {
@@ -708,11 +714,14 @@ species entertainer skills: [moving, fipa] {
 				}
 				
 				}
-				if counter2 = 100{
-					count<-false;
-					counter2<-0;
-					wander<-true;
-					ready<-false;
+				ask stages{
+					if self.counter=200{
+					myself.counter2<-0;
+					myself.count<-false;
+					myself.wander<-true;
+					myself.ready<-false;
+				}
+				
 				}
 				
 			}
