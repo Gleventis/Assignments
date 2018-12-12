@@ -9,10 +9,15 @@ model basic
 
 /* Insert your model definition here */
 
+
+/*
+ * ***************************** Global Declaration *****************************
+ * Includes values such as the number of the agents, locations of buildings and global values used for the charts.
+ */
 global {
 	int num_guests <- 10;
 	int num_cops <- 1;
-	int num_cleaners <- 2;
+	int num_cleaners <- 10;
 	int num_manager <- 1;
 	int num_entertainer <- 3;
 	int num_stores <- 2;
@@ -20,6 +25,8 @@ global {
 	int num_stages <- 3;
 	int num_rest <- 1;
 	int num_cell <- 1;
+	int num_rd_bar <- 1;
+	int num_pd_bar <- 1;
 	
 	list<point> store_locs <- [{2,2},{98, 98}];
 	
@@ -31,11 +38,29 @@ global {
 	
 	point rest_place_loc <- {5,95};
 	
+	point rd_bar_loc <- {47, 4};
+	
+	point pd_bar_loc <- {47, 96};
+	
+	//Values for the chart
+	
+	int happiness <- 0;
+	int num_of_garbage <- 0;
+	int BadBehaviour <- 0;
+	
 	init {
 		int xStoreLoc <- 2;
 		int yStoreLoc <- 2;
 		
 		create guest number: num_guests;
+		
+		create rd_bar number: num_rd_bar {
+			location <- rd_bar_loc;
+		}
+		
+		create pd_bar number: num_pd_bar {
+			location <- pd_bar_loc;
+		}
 		
 		create stageManager number: 1;
 		
@@ -73,6 +98,24 @@ global {
 	}
 }
 
+/*
+ * ***************************** Species Declaration *****************************
+ * 1st. Guest
+ *  2nd. Rd_bar
+ *  3rd. Pd_bar
+ *  4th. InfoCenter
+ *  5th. Garbage
+ *  6th. Cop
+ *  7th. Cell
+ *  8th. StageManager
+ *  9th. Stages
+ *  10th. Entertainer
+ *  11th. Cleaner
+ *  12th. Store
+ *  13th. Wc
+ *  14th. RestPlace
+ */
+
 species guest skills: [moving, fipa] {
 	point target_point <- nil;
 	
@@ -92,12 +135,13 @@ species guest skills: [moving, fipa] {
 	bool updated <-false;
 	bool going_to_stage <- false;
 	bool communicate <- true;
+	bool has_communicated <- false;
 	bool has_music <- false;
 	bool conflict <- false;
 	
 	int hunger <- 0;
 	int thirst <- 0;
-	int stamina <- 5000;
+	int stamina <- 400;
 	int w_counter <- 0;
 	int pos<-0;
 	int speech <- rnd(1,10);
@@ -151,6 +195,7 @@ species guest skills: [moving, fipa] {
 	}
 	
 	reflex getting_tired when: (stamina > 50 and !need_to_rest){
+		communicate <- flip(0.1);
 		stamina <- stamina - 1;
 	}
 
@@ -180,8 +225,6 @@ species guest skills: [moving, fipa] {
 		message messageInc <- informs at 0;
 		stageAtt <- messageInc.contents[1];
 		informed <- true;
-
-		
 	}
 	
 	reflex calculate_stage_utility when: informed {
@@ -236,10 +279,19 @@ species guest skills: [moving, fipa] {
 	 }
 	
 	reflex spawn_garbage when:(thirst = 5 or hunger = 5) and dirty {
-		create garbage number: 1 {
+	
+		create garbage  number: 1{
 			location <- self.location;
+			num_of_garbage <- num_of_garbage + 1;
+		}
+		
+		
+		if !empty(garbage at_distance 1) {
+			happiness <- happiness - 1;
 		}
 	}
+	
+	
 	
 	reflex resetAtt when: !updated{
 
@@ -258,31 +310,61 @@ species guest skills: [moving, fipa] {
 	 }
 	// Interaction
 	reflex interact when: !going_to_stage {
-		ask guest at_distance 1 {
+		ask guest at_distance 0.5 {
 			if myself.communicate and self.communicate {
-				write myself.name + " is communicating with " + self.name;
+				//write myself.name + " is communicating with " + self.name;
 				if myself.music_taste = "rock" and self.music_taste = "rock" {
-					write myself.name + " has no conflict with " + self.name;
+					//write myself.name + " has no conflict with " + self.name;
+					self.target_point <- rd_bar_loc;
+					myself.target_point <- rd_bar_loc;
+					self.wander <- false;
+					myself.wander <- false;
+					myself.has_communicated <- true;
+					self.has_communicated <- true;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
 				else if myself.music_taste = "pop" and self.music_taste = "pop" {
-					write myself.name + " has no conflict with " + self.name;
+					//write myself.name + " has no conflict with " + self.name;
+					self.target_point <- pd_bar_loc;
+					myself.target_point <- pd_bar_loc;
+					self.wander <- false;
+					myself.wander <- false;
+					myself.has_communicated <- true;
+					self.has_communicated <- true;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
 				else if myself.music_taste = "disco" and self.music_taste = "disco" {
-					write myself.name + " has no conflict with " + self.name;
+					//write myself.name + " has no conflict with " + self.name;
+					self.target_point <- pd_bar_loc;
+					myself.target_point <- pd_bar_loc;
+					self.wander <- false;
+					myself.wander <- false;
+					myself.has_communicated <- true;
+					self.has_communicated <- true;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
 				else if myself.music_taste = "rock" and self.music_taste = "disco" {
-					write myself.name + " has no conflict with " + self.name;
+					//write myself.name + " has no conflict with " + self.name;
+					self.target_point <- rd_bar_loc;
+					myself.target_point <- rd_bar_loc;
+					self.wander <- false;
+					myself.wander <- false;
+					myself.has_communicated <- true;
+					self.has_communicated <- true;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
 				else if myself.music_taste = "pop" and self.music_taste = "disco" {
-					write myself.name + " has no conflict with " + self.name;
+					//write myself.name + " has no conflict with " + self.name;
+					self.target_point <- pd_bar_loc;
+					myself.target_point <- pd_bar_loc;
+					self.wander <- false;
+					myself.wander <- false;
+					myself.has_communicated <- true;
+					self.has_communicated <- true;
 					myself.conflict <- false;
 					self.conflict <- false;
 				}
@@ -296,11 +378,15 @@ species guest skills: [moving, fipa] {
 					if myself.speech > self.speech {
 						write "I am " + self.name + " and " + myself.name + " has persuaded me to change music.";
 						self.music_taste <- myself.music_taste;
+						happiness <- happiness - 1;
+						happiness <- happiness + 2;
 						write self.name + " -->" + self.music_taste;		
 					}
 					else if myself.speech < self.speech {
 						write "I am " + myself.name + " and " + self.name + " has persuaded me to change music.";
 						myself.music_taste <- self.music_taste;
+						happiness <- happiness - 1;
+						happiness <- happiness + 2;
 						write myself.name + " -->" + myself.music_taste;
 					}
 					else if myself.speech = self.speech {
@@ -326,6 +412,49 @@ species guest skills: [moving, fipa] {
  			draw pyramid(3)at:{location.x, location.y, 0} color: color;
  			draw sphere(1) at:{location.x, location.y,3} color: #orange;
 	}	
+}
+
+species rd_bar {
+	
+	reflex increase_happiness {
+		ask guest at_distance 0 {
+			if (self.music_taste = "rock" or self.music_taste = "disco") and self.has_communicated{
+				happiness <- happiness + 1;
+				write self.name + " is listening to rock/disco and is having fun!";
+				self.communicate <- false;
+				self.has_communicated <- false;
+				self.wander <- true;
+				self.target_point <- nil;
+				self.w_counter <- 0;
+				self.at_info <- false;
+			}
+		}
+	} 
+	
+	aspect base {
+		draw cube(6) color: #lightgrey;
+	}
+}
+
+species pd_bar {
+	reflex increase_happiness {
+		ask guest at_distance 0 {
+			if (self.music_taste = "pop" or self.music_taste = "disco") and self.has_communicated {
+				happiness <- happiness + 1;
+				write self.name + " is listening to pop/disco and is having fun!";
+				self.communicate <- false;
+				self.has_communicated <- false;
+				self.wander <- true;
+				self.target_point <- nil;
+				self.w_counter <- 0;
+				self.at_info <- false;
+			}
+		}
+	}
+	
+	aspect base {
+		draw cube(6) color: #lightgrey;
+	}
 }
 
 
@@ -360,7 +489,7 @@ species infoCenter skills: [fipa]{
 			self.at_info <- true;
 			
 			// Informing the cop
-			if (self.bad and !self.cop_informed) {
+			if (self.bad and !self.cop_informed and self.color = #grey) {
 				add self to: myself.bad_guests;
 				do start_conversation(to :: list(cop), protocol :: 'no-protocol', performative :: 'cfp', contents :: [self.name + " is a bad guest!", myself.bad_guests]);
 				self.cop_informed <- true;
@@ -369,8 +498,8 @@ species infoCenter skills: [fipa]{
 	}
 	
 	aspect base {
-		draw cube(6) at:info_loc color:#darkgreen;
-		draw pyramid(6) at:info_loc+{0,0,6} color:#darkgrey;
+		//draw cube(6) at:info_loc color:#darkgreen;
+		draw pyramid(6) at:info_loc+{0,0,6} color:#skyblue;
 	}
 }
 
@@ -402,10 +531,13 @@ species cop skills: [moving, fipa] {
 	
 	reflex killbadguest when: length(bad_guests) > 0 and location distance_to(bad_guests[0]) < 0.1 {
 		ask bad_guests[0] {
-			write name + ': go to jail!';
-			self.target_point <- cell_loc;
-			do goto target: self.target_point;
-			self.remainBad <-true;
+			if self.color = #grey or self.color = #black {
+				write name + ': go to jail!';
+				self.target_point <- cell_loc;
+				do goto target: self.target_point;
+				self.remainBad <-true;
+			}
+		
 		}
 		bad_guests <- bad_guests - first(bad_guests);
 	}
@@ -421,11 +553,15 @@ species cell {
 	int jailTime <- 0;
 	
 	reflex jail  {
-		ask guest at_distance 0.1 {
+	
+		ask guest at_distance 1 {
+			happiness<-happiness-1;
+			BadBehaviour<-BadBehaviour+1;
 			if self.remainBad =true{
 				self.color <- #black;
+				self.target_point <- nil;
 				myself.jailTime <- myself.jailTime + 1;
-				if myself.jailTime = 50 {
+				if myself.jailTime = 70 {
 					write name + ': i am free';
 					self.color <- flip(0.2) ? #grey : #teal;
 					if self.color = #grey {
@@ -442,8 +578,10 @@ species cell {
 					self.changed_color <- false;
 					self.w_counter <- -10;
 					myself.jailTime <-0;
+					}
 					
-				}
+					
+				
 				
 			}
 			
@@ -453,7 +591,7 @@ species cell {
 	
 	
 	aspect base {
-		draw square(10) color: #black;
+		draw square(10) color: #salmon;
 	}
 }
 
@@ -464,6 +602,10 @@ species stageManager skills: [moving, fipa] {
 	bool wander <-true;
 	bool atInfoCenter <-false;
 	bool has_informed <- false;
+	int counter<-0;
+	int counter1<-0;
+	int counter2<-0;
+	
 	
 	reflex learnAtt when: !informed and ((time mod 500) = 0){
 		ask stages {
@@ -486,20 +628,38 @@ species stageManager skills: [moving, fipa] {
 		   	 add self.newstageAtt[2] to: myself.stageAtt;
 		   	 add self.newstageAtt[3] to: myself.stageAtt;
 			 myself.informed <- true;
+			 
 		}
 		
 	}
 	
 	reflex wander when:wander{
+		
+		if counter>=0 and counter<=400{
+		counter<-counter+1;
 		do wander;	
+		
+		}
+		if counter >=400 and counter1 >=0 and counter1<=100{
+			counter1<-counter1+1;
+			do goto target:info_loc;
+			if counter1=100{counter<-0;}
+		}if counter1>=100 and counter2>= 0 and counter2<=200{
+			counter2<-counter2+1;
+			do goto target:info_loc;
+			if counter2=200{
+				counter1<-0;
+				counter2<-0;
+			}	
+		} 
+	
+		
+		
 	}
 	
 	
 	reflex informShow when: !atInfoCenter{
-		if time >=400 {
-			do goto target:info_loc;
-			wander <- false;
-		}
+
 		if location distance_to(info_loc) < 2 and !has_informed and ((time mod 500) = 0){
 			atInfoCenter <-false;
 			write name + " arrived at info center, shows are coming !";
@@ -509,7 +669,7 @@ species stageManager skills: [moving, fipa] {
 			
 
 		}
-			wander <-true;
+
 			informed <-false;
 			stageAtt<-[];
 	}
@@ -529,7 +689,7 @@ species stages  skills: [fipa] {
 	bool print <- false;
 	bool party <- false;
 	list<float> newstageAtt <- ([music,soundQuality,band,crowded ]); 
-	rgb color <- #magenta;
+	rgb color <- #palegreen;
 	int counter <- 0;
 	bool updated <- false;
 	bool informed <- true;
@@ -557,7 +717,7 @@ species stages  skills: [fipa] {
 		counter<-counter+1;
 		if counter>200 {
 			party <- false;
-			color <- #magenta;
+			color <- #palegreen;
 			counter <-0;
 			ask guest at_distance 2 {
 				self.w_counter <- 0;
@@ -565,6 +725,7 @@ species stages  skills: [fipa] {
 				self.at_info <- false;
 				self.target_point <- nil;
 				self.going_to_stage <- false;
+				happiness <- happiness + 5;
 				
 			}
 		}
@@ -578,7 +739,7 @@ species stages  skills: [fipa] {
 }
 
 species entertainer skills: [moving, fipa] {
-	bool wander <- true;
+bool wander <- true;
 	bool ready <-false;
 	bool count <-true;
 	int counter <-0;	
@@ -662,7 +823,7 @@ species entertainer skills: [moving, fipa] {
 					myself.count<-false;
 					myself.wander<-true;
 					myself.ready<-false;
-				}
+					}
 				
 				}
 			
@@ -672,7 +833,6 @@ species entertainer skills: [moving, fipa] {
 				ask guest at_distance 5 {
 				if myself.counter1= 60 {
 				write myself.name + " Do you wanna sing along? ......................";
-				
 				}
 				if myself.counter1=65 {
 					write myself.name + " ..........My lonelinesss........... "; 
@@ -726,10 +886,7 @@ species entertainer skills: [moving, fipa] {
 				
 			}
 		}
-	
 	}
-
-	
 	
 	aspect base {
 		draw pyramid(3) at:{location.x, location.y} color: #green;
@@ -748,6 +905,8 @@ species cleaner skills: [moving] {
 		if !empty(garbage at_distance 4) {
 			ask garbage at_distance 4 {
 				do die;
+				num_of_garbage <- num_of_garbage - 1;
+				happiness<-happiness+1;
 			}
 		}
 	}
@@ -767,7 +926,7 @@ species store {
 				self.target_point <- nil;
 				self.at_info <- false;
 				self.changed_color <- false;
-				self.dirty <- flip(0.1);
+				self.dirty <- flip(0.2);
 				self.w_counter <- -5;
 				self.wander <- true;
 				if(self.hunger = 5) {
@@ -779,7 +938,7 @@ species store {
 				self.target_point <- nil;
 				self.at_info <- false;
 				self.changed_color <- false;
-				self.dirty <- flip(0.1);
+				self.dirty <- flip(0.2);
 				self.w_counter <- -5;
 				self.wander <- true;
 				if(self.thirst = 5) {
@@ -845,15 +1004,21 @@ species rest_place {
 	}
 	
 	aspect base {
-		draw square(10) color: #black;
+		draw square(10) color: #grey;
 	}
 }
 
-species entrance {
 
-}
+/*
+ *  ***************************** Experiment Declaration *****************************
+ *  Includes commands for changing the number of the guests, cleaners and cops, charts for the value of happiness, ..., and the main display.
+ */
 
 experiment main {
+	parameter "Number of guests" var: num_guests min: 10 max: 50 category: "Guests";
+	parameter "Number of cleaners" var: num_cleaners min: 2 max: 20 category: "Cleaners";
+	parameter "Number of cops" var: num_cops min: 1 max: 6 category: "Cops";
+	
 	output {
 		display my_display type: opengl {
 			image file: "grass.jpg";
@@ -869,8 +1034,22 @@ experiment main {
 			species rest_place aspect:base;
 			species stageManager aspect:base;
 			species entertainer aspect: base;
+			species rd_bar aspect: base;
+			species pd_bar aspect: base;
 		}
-		
+		display happiness_graph {
+			chart "Happiness" x_label: "Time" y_label: "Happiness"{
+				data "happiness" value: happiness;
+			}
+		}
+		display garbage_happiness_pie {
+			chart "Proportion between Happiness-Garbage" type: pie {
+				data "Happiness" value: happiness;
+				data "Garbage" value: num_of_garbage;
+				data "Bad Behaviour" value: BadBehaviour;
+				
+			}
+		}
 		
 	}
 }
