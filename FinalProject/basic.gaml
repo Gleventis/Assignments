@@ -278,14 +278,19 @@ species guest skills: [moving, fipa] {
 	 }
 	
 	reflex spawn_garbage when:(thirst = 5 or hunger = 5) and dirty {
-		create garbage number: 1 {
+	
+		create garbage  number: 1{
 			location <- self.location;
 			num_of_garbage <- num_of_garbage + 1;
 		}
+		
+		
 		if !empty(garbage at_distance 1) {
 			happiness <- happiness - 1;
 		}
 	}
+	
+	
 	
 	reflex resetAtt when: !updated{
 
